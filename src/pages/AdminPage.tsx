@@ -1,12 +1,11 @@
 import { useAdminAuth } from "@/lib/adminAuth";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
-import { AcceptInviteForm } from "@/components/admin/AcceptInviteForm";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { ShieldAlert, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export function AdminPage() {
-  const { user, isAdmin, isLoading, logout, inviteToken } = useAdminAuth();
+  const { user, isAdmin, isLoading, logout } = useAdminAuth();
 
   if (isLoading) {
     return (
@@ -15,8 +14,6 @@ export function AdminPage() {
       </div>
     );
   }
-
-  if (inviteToken) return <AcceptInviteForm />;
 
   if (!user) return <AdminLoginForm />;
 

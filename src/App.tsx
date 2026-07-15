@@ -3,8 +3,9 @@ import { Suspense, lazy, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { LandingPage } from "@/pages/LandingPage";
-import { AdminAuthProvider } from "@/lib/adminAuth";
+import { AdminAuthProvider, useAdminAuth } from "@/lib/adminAuth";
 import { EditModeToggle } from "@/components/admin/EditModeToggle";
+import { AcceptInviteForm } from "@/components/admin/AcceptInviteForm";
 
 const EstimatePage = lazy(() => import("@/pages/EstimatePage").then((m) => ({ default: m.EstimatePage })));
 const SummaryPage = lazy(() => import("@/pages/SummaryPage").then((m) => ({ default: m.SummaryPage })));
@@ -26,29 +27,46 @@ function PageFallback() {
   );
 }
 
-export default function App() {
+function AppShell() {
   const { pathname } = useLocation();
+  const { inviteToken } = useAdminAuth();
   const showMobileNav = pathname === "/";
   const isAdminRoute = pathname.startsWith("/admin");
 
+  // An invite link can land the user on any page (the redirect target is the site
+  // root) — handle it here so the "set your password" step never gets missed.
+  if (inviteToken) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-ink-950">
+        <AcceptInviteForm />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-ink-950">
+      <ScrollToTop />
+      {!isAdminRoute && <Navbar />}
+      <main className={showMobileNav ? "pb-20 sm:pb-0" : ""}>
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/estimate" element={<EstimatePage />} />
+            <Route path="/summary" element={<SummaryPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+          </Routes>
+        </Suspense>
+      </main>
+      {showMobileNav && <MobileNav />}
+      {!isAdminRoute && <EditModeToggle />}
+    </div>
+  );
+}
+
+export default function App() {
   return (
     <AdminAuthProvider>
-      <div className="min-h-screen bg-white dark:bg-ink-950">
-        <ScrollToTop />
-        {!isAdminRoute && <Navbar />}
-        <main className={showMobileNav ? "pb-20 sm:pb-0" : ""}>
-          <Suspense fallback={<PageFallback />}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/estimate" element={<EstimatePage />} />
-              <Route path="/summary" element={<SummaryPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-            </Routes>
-          </Suspense>
-        </main>
-        {showMobileNav && <MobileNav />}
-        {!isAdminRoute && <EditModeToggle />}
-      </div>
+      <AppShell />
     </AdminAuthProvider>
   );
 }
