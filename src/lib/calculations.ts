@@ -1,39 +1,19 @@
-import {
-  ARCHITECTURAL_FEE_TIERS,
-  CATEGORY_BASE_RATE,
-  ENGINEERING_FEE_RATE,
-  FLOORS_COST_ADDER_PER_LEVEL,
-  INTERIOR_FEE_RATE,
-  MEP_MULTIPLIER,
-  PROJECT_TYPE_MULTIPLIER,
-  QUALITY_MULTIPLIER,
-  QUALITY_TIMELINE_FACTOR,
-} from "@/data/costRates";
-import { PROVINCES } from "@/data/provinces";
-import { ADDITIONAL_SERVICES, SERVICE_CATEGORY_LABELS } from "@/data/services";
+import { SERVICE_CATEGORY_LABELS } from "@/data/services";
 import type { AdditionalService, CostBreakdownItem, EstimateResult, WizardSelections } from "@/types/estimate";
+import type { ServiceRow, SiteDataResponse } from "@/types/content";
 import { buildRecommendations } from "@/lib/recommendations";
-
-const TYPE_TIMELINE_FACTOR: Record<string, number> = {
-  "New Construction": 1.0,
-  Renovation: 0.6,
-  Extension: 0.7,
-  "Interior Fit-out": 0.45,
-  "Design Only": 0.22,
-  "Design & Build": 1.1,
-};
 
 const MEP_RISK: Record<string, number> = { Simple: 0, Standard: 5, Advanced: 12, "Mission-Critical": 20 };
 const MEP_INDEX: Record<string, number> = { Simple: 1, Standard: 2, Advanced: 3, "Mission-Critical": 4 };
 const QUALITY_INDEX: Record<string, number> = { Basic: 1, Standard: 2, Premium: 3, Luxury: 4, "Ultra Luxury": 5 };
 const HIGH_RISK_CATEGORIES = new Set(["Hospital", "Industrial", "Institutional", "Warehouse"]);
 
-function getArchitecturalRate(feeBasis: number) {
-  const tier = ARCHITECTURAL_FEE_TIERS.find((t) => feeBasis <= t.upTo);
-  return tier ? tier.rate : ARCHITECTURAL_FEE_TIERS[ARCHITECTURAL_FEE_TIERS.length - 1].rate;
+function getArchitecturalRate(feeBasis: number, tiers: { upTo: number | null; rate: number }[]) {
+  const tier = tiers.find((t) => t.upTo !== null && feeBasis <= t.upTo);
+  return tier ? tier.rate : tiers[tiers.length - 1]?.rate ?? 0.06;
 }
 
-function serviceCost(service: AdditionalService, floorArea: number, feeBasis: number) {
+function serviceCost(service: ServiceRow, floorArea: number, feeBasis: number) {
   switch (service.feeType) {
     case "per_sqm":
       return service.value * floorArea;
@@ -47,36 +27,48 @@ function serviceCost(service: AdditionalService, floorArea: number, feeBasis: nu
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
-export function calculateEstimate(s: WizardSelections): EstimateResult | null {
+export function calculateEstimate(s: WizardSelections, siteData: SiteDataResponse): EstimateResult | null {
   if (!s.category || !s.projectType || !s.quality || !s.floorArea) return null;
 
-  const base = CATEGORY_BASE_RATE[s.category];
-  const quality = QUALITY_MULTIPLIER[s.quality];
-  const mep = MEP_MULTIPLIER[s.building.mepComplexity];
-  const provinceEntry = PROVINCES.find((p) => p.name === s.location.province);
+  const settings = siteData.settings;
+  const categoryRates = settings["estimator.categoryRates"] ?? {};
+  const qualityMultipliers = settings["estimator.qualityMultipliers"] ?? {};
+  const projectTypeMultipliers = settings["estimator.projectTypeMultipliers"] ?? {};
+  const mepMultipliers = settings["estimator.mepMultipliers"] ?? {};
+  const architecturalFeeTiers = settings["estimator.architecturalFeeTiers"] ?? [{ upTo: null, rate: 0.06 }];
+  const engineeringFeeRate = settings["estimator.engineeringFeeRate"] ?? 0.045;
+  const interiorFeeRate = settings["estimator.interiorFeeRate"] ?? 0.06;
+  const floorsCostAdderPerLevel = settings["estimator.floorsCostAdderPerLevel"] ?? 0.03;
+  const qualityTimelineFactors = settings["estimator.qualityTimelineFactors"] ?? {};
+  const projectTypeTimelineFactors = settings["estimator.projectTypeTimelineFactors"] ?? {};
+
+  const base = categoryRates[s.category] ?? 30000;
+  const quality = qualityMultipliers[s.quality] ?? 1;
+  const mep = mepMultipliers[s.building.mepComplexity] ?? 1;
+  const provinceEntry = siteData.provinces.find((p) => p.name === s.location.province);
   const provinceMultiplier = provinceEntry?.multiplier ?? 1;
-  const floorsAdder = 1 + Math.max(0, s.building.floors - 1) * FLOORS_COST_ADDER_PER_LEVEL;
+  const floorsAdder = 1 + Math.max(0, s.building.floors - 1) * floorsCostAdderPerLevel;
 
   const referenceCostPerSqm = base * quality * mep * provinceMultiplier * floorsAdder;
   const referenceCost = referenceCostPerSqm * s.floorArea;
 
   const isDesignOnly = s.projectType === "Design Only";
   const isInteriorFitout = s.projectType === "Interior Fit-out";
-  const typeMultiplier = PROJECT_TYPE_MULTIPLIER[s.projectType];
+  const typeMultiplier = projectTypeMultipliers[s.projectType] ?? 1;
 
   const constructionCost = isDesignOnly ? 0 : referenceCost * typeMultiplier;
   const constructionCostPerSqm = isDesignOnly ? 0 : referenceCostPerSqm * typeMultiplier;
   const feeBasis = isDesignOnly ? referenceCost : constructionCost;
 
   const designApplicable = !isInteriorFitout;
-  const architecturalFee = designApplicable ? feeBasis * getArchitecturalRate(feeBasis) : 0;
-  const engineeringFee = designApplicable ? feeBasis * ENGINEERING_FEE_RATE : 0;
-  const interiorFee = isInteriorFitout ? feeBasis * INTERIOR_FEE_RATE : 0;
+  const architecturalFee = designApplicable ? feeBasis * getArchitecturalRate(feeBasis, architecturalFeeTiers) : 0;
+  const engineeringFee = designApplicable ? feeBasis * engineeringFeeRate : 0;
+  const interiorFee = isInteriorFitout ? feeBasis * interiorFeeRate : 0;
 
   const categoryTotals: Record<string, number> = {};
   let additionalServicesCost = 0;
   for (const id of s.services) {
-    const svc = ADDITIONAL_SERVICES.find((x) => x.id === id);
+    const svc = siteData.services.find((x) => x.id === id);
     if (!svc) continue;
     const cost = serviceCost(svc, s.floorArea, feeBasis || referenceCost);
     additionalServicesCost += cost;
@@ -99,8 +91,8 @@ export function calculateEstimate(s: WizardSelections): EstimateResult | null {
     1,
     Math.round(
       (2 + Math.sqrt(s.floorArea / 40)) *
-        QUALITY_TIMELINE_FACTOR[s.quality] *
-        (TYPE_TIMELINE_FACTOR[s.projectType] ?? 1) *
+        (qualityTimelineFactors[s.quality] ?? 1) *
+        (projectTypeTimelineFactors[s.projectType] ?? 1) *
         (1 + Math.max(0, s.building.floors - 1) * 0.08),
     ),
   );

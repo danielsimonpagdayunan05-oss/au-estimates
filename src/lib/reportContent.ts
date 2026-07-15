@@ -1,8 +1,8 @@
 import type { EstimateResult, WizardSelections } from "@/types/estimate";
-import { ADDITIONAL_SERVICES } from "@/data/services";
+import type { ServiceRow } from "@/types/content";
 import { formatMonths, formatPHP } from "@/lib/formatters";
 
-export function buildDeliverables(s: WizardSelections): string[] {
+export function buildDeliverables(s: WizardSelections, services: ServiceRow[]): string[] {
   const base: Record<string, string[]> = {
     "New Construction": ["Architectural Plans", "Structural Plans", "Building Permit Set", "Bill of Quantities"],
     Renovation: ["Renovation Plans", "Scope of Work Document", "Permit Set (as required)"],
@@ -12,7 +12,7 @@ export function buildDeliverables(s: WizardSelections): string[] {
     "Design & Build": ["Full Design Set", "Construction Schedule", "As-Built Plans"],
   };
   const core = (s.projectType && base[s.projectType]) || base["New Construction"];
-  const extras = s.services.map((id) => ADDITIONAL_SERVICES.find((sv) => sv.id === id)?.label).filter(Boolean) as string[];
+  const extras = s.services.map((id) => services.find((sv) => sv.id === id)?.label).filter(Boolean) as string[];
   return Array.from(new Set([...core, ...extras]));
 }
 

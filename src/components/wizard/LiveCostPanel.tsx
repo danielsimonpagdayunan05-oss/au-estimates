@@ -3,6 +3,7 @@ import { Sparkles, Users, Building2, Clock3, Leaf } from "lucide-react";
 import { useWizardStore } from "@/store/wizardStore";
 import { calculateEstimate } from "@/lib/calculations";
 import { formatMonths, formatPHP } from "@/lib/formatters";
+import { useSiteData } from "@/lib/useSiteData";
 import { GlassCard } from "@/components/ui/Card";
 import { GaugeBar } from "@/components/ui/GaugeBar";
 import { Badge } from "@/components/ui/Badge";
@@ -10,7 +11,8 @@ import { AnimatedValue } from "@/components/ui/AnimatedValue";
 
 export function LiveCostPanel({ compact = false }: { compact?: boolean }) {
   const { selections } = useWizardStore();
-  const estimate = useMemo(() => calculateEstimate(selections), [selections]);
+  const { data: siteData } = useSiteData();
+  const estimate = useMemo(() => calculateEstimate(selections, siteData), [selections, siteData]);
 
   if (!estimate) {
     return (

@@ -1,12 +1,13 @@
 import { MapPin } from "lucide-react";
-import { PROVINCES } from "@/data/provinces";
 import { useWizardStore } from "@/store/wizardStore";
+import { useSiteData } from "@/lib/useSiteData";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 
 export function Step3Location() {
   const { selections, setLocation } = useWizardStore();
-  const province = PROVINCES.find((p) => p.name === selections.location.province);
+  const { data: siteData } = useSiteData();
+  const province = siteData.provinces.find((p) => p.name === selections.location.province);
 
   return (
     <div>
@@ -20,7 +21,7 @@ export function Step3Location() {
           label="Province"
           value={selections.location.province}
           onChange={(v) => setLocation({ province: v, city: "" })}
-          options={["Select province", ...PROVINCES.map((p) => p.name)]}
+          options={["Select province", ...siteData.provinces.map((p) => p.name)]}
         />
         <Select
           label="City / Municipality"

@@ -22,6 +22,7 @@ import { calculateEstimate } from "@/lib/calculations";
 import { formatMonths, formatNumber, formatPHP } from "@/lib/formatters";
 import { buildAiNotes, buildConstructionPhases, buildDeliverables, buildMaintenanceTips } from "@/lib/reportContent";
 import { calculateRoi } from "@/lib/roi";
+import { useSiteData } from "@/lib/useSiteData";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -34,7 +35,8 @@ import type { ClientInfo } from "@/types/estimate";
 export function SummaryPage() {
   const navigate = useNavigate();
   const { selections, reset, hasHydrated } = useWizardStore();
-  const estimate = useMemo(() => calculateEstimate(selections), [selections]);
+  const { data: siteData } = useSiteData();
+  const estimate = useMemo(() => calculateEstimate(selections, siteData), [selections, siteData]);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -57,7 +59,7 @@ export function SummaryPage() {
 
   if (!estimate || !selections.category || !selections.projectType || !selections.quality) return null;
 
-  const deliverables = buildDeliverables(selections);
+  const deliverables = buildDeliverables(selections, siteData.services);
   const maintenanceTips = buildMaintenanceTips(selections);
   const aiNotes = buildAiNotes(selections, estimate);
   const constructionPhases = buildConstructionPhases();

@@ -4,7 +4,7 @@ import { CheckCircle2, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { clientInfoSchema, type ClientInfoFormValues } from "@/lib/schemas";
 import type { EstimateResult, WizardSelections } from "@/types/estimate";
-import { createLead } from "@/lib/leads";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -18,6 +18,7 @@ interface ClientInfoFormProps {
 
 export function ClientInfoForm({ selections, estimate, onSubmitted }: ClientInfoFormProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const defaultLocation = [selections.location.city, selections.location.province].filter(Boolean).join(", ");
 
   const {
@@ -40,10 +41,26 @@ export function ClientInfoForm({ selections, estimate, onSubmitted }: ClientInfo
 
   const onSubmit = async (values: ClientInfoFormValues) => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const lead = createLead(values, selections, estimate);
-    setSubmitting(false);
-    onSubmitted(lead.id, values);
+    setSubmitError(null);
+    try {
+      const lead = await api.post<{ id: number }>("/api/leads", {
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        projectLocation: values.projectLocation,
+        budget: values.budget,
+        targetCompletion: values.targetCompletion,
+        consultationDate: values.consultationDate,
+        notes: values.notes,
+        selections,
+        estimate,
+      });
+      onSubmitted(`LEAD-${String(lead.id).padStart(6, "0")}`, values);
+    } catch {
+      setSubmitError("Something went wrong submitting your details. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const inputClass =
@@ -106,6 +123,10 @@ export function ClientInfoForm({ selections, estimate, onSubmitted }: ClientInfo
           <label className={labelClass}>Notes (optional)</label>
           <textarea className={inputClass} rows={3} placeholder="Anything else we should know?" {...register("notes")} />
         </div>
+
+        {submitError && (
+          <p className="sm:col-span-2 text-sm text-red-500">{submitError}</p>
+        )}
 
         <div className="sm:col-span-2">
           <Button type="submit" size="lg" className="w-full" disabled={submitting} icon={submitting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}>

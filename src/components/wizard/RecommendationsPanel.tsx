@@ -3,11 +3,13 @@ import { Wand2, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWizardStore } from "@/store/wizardStore";
 import { calculateEstimate } from "@/lib/calculations";
+import { useSiteData } from "@/lib/useSiteData";
 import { GlassCard } from "@/components/ui/Card";
 
 export function RecommendationsPanel() {
   const { selections } = useWizardStore();
-  const estimate = useMemo(() => calculateEstimate(selections), [selections]);
+  const { data: siteData } = useSiteData();
+  const estimate = useMemo(() => calculateEstimate(selections, siteData), [selections, siteData]);
 
   if (!estimate || estimate.recommendations.length === 0) return null;
 

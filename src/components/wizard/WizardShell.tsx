@@ -9,6 +9,7 @@ import { RecommendationsPanel } from "@/components/wizard/RecommendationsPanel";
 import { Button } from "@/components/ui/Button";
 import { calculateEstimate } from "@/lib/calculations";
 import { formatPHP } from "@/lib/formatters";
+import { useSiteData } from "@/lib/useSiteData";
 
 import { Step1Category } from "@/components/wizard/steps/Step1Category";
 import { Step2ProjectType } from "@/components/wizard/steps/Step2ProjectType";
@@ -26,7 +27,8 @@ export function WizardShell() {
   const [maxReached, setMaxReached] = useState(step);
   const StepComponent = STEP_COMPONENTS[step - 1];
   const valid = isStepValid(step);
-  const estimate = calculateEstimate(selections);
+  const { data: siteData } = useSiteData();
+  const estimate = calculateEstimate(selections, siteData);
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {

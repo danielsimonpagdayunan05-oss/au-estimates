@@ -1,13 +1,14 @@
 import { Check } from "lucide-react";
-import { ADDITIONAL_SERVICES, SERVICE_CATEGORY_LABELS } from "@/data/services";
-import type { AdditionalService } from "@/types/estimate";
+import { SERVICE_CATEGORY_LABELS } from "@/data/services";
+import type { ServiceRow } from "@/types/content";
 import { useWizardStore } from "@/store/wizardStore";
+import { useSiteData } from "@/lib/useSiteData";
 import { formatPHP } from "@/lib/formatters";
 import { cn } from "@/lib/cn";
 
-const CATEGORY_ORDER: AdditionalService["category"][] = ["design", "engineering", "construction", "documentation", "survey"];
+const CATEGORY_ORDER: ServiceRow["category"][] = ["design", "engineering", "construction", "documentation", "survey"];
 
-function estimateLabel(svc: AdditionalService) {
+function estimateLabel(svc: ServiceRow) {
   if (svc.feeType === "flat") return formatPHP(svc.value, { compact: true });
   if (svc.feeType === "per_sqm") return `${formatPHP(svc.value)}/sqm`;
   return `${(svc.value * 100).toFixed(1)}% of cost`;
@@ -15,6 +16,7 @@ function estimateLabel(svc: AdditionalService) {
 
 export function Step7Services() {
   const { selections, toggleService } = useWizardStore();
+  const { data: siteData } = useSiteData();
 
   return (
     <div>
@@ -26,7 +28,7 @@ export function Step7Services() {
           <div key={cat}>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-400">{SERVICE_CATEGORY_LABELS[cat]}</h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {ADDITIONAL_SERVICES.filter((s) => s.category === cat).map((svc) => {
+              {siteData.services.filter((s) => s.category === cat).map((svc) => {
                 const selected = selections.services.includes(svc.id);
                 return (
                   <button

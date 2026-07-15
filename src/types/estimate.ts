@@ -102,12 +102,3 @@ export interface EstimateResult {
   carbonFootprintTons: number;
   recommendations: string[];
 }
-
-export interface Lead {
-  id: string;
-  createdAt: string;
-  status: LeadStatus;
-  client: ClientInfo;
-  selections: WizardSelections;
-  estimate: EstimateResult;
-}

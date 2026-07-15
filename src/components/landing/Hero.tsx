@@ -3,6 +3,10 @@ import { motion, type Variants } from "framer-motion";
 import { ArrowRight, CalendarClock, Sparkles, TrendingUp, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { GlassCard } from "@/components/ui/Card";
+import { EditableText } from "@/components/admin/EditableText";
+import { useSiteData } from "@/lib/useSiteData";
+import { api } from "@/lib/api";
+import { formatPHP } from "@/lib/formatters";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -14,6 +18,17 @@ const fadeUp: Variants = {
 };
 
 export function Hero() {
+  const { data, refetch } = useSiteData();
+  const tagline = (data.settings["hero.tagline"] as string) ?? "";
+  const headline = (data.settings["hero.headline"] as string) ?? "";
+  const subtitle = (data.settings["hero.subtitle"] as string) ?? "";
+  const sample = data.settings["hero.sampleEstimate"] ?? { investment: 12480000, timelineMonths: 14, riskLabel: "Low", riskPct: 28 };
+
+  const saveSetting = async (key: string, value: unknown) => {
+    await api.put("/api/admin/settings", { key, value });
+    await refetch();
+  };
+
   return (
     <section className="relative overflow-hidden">
       <div
@@ -35,15 +50,14 @@ export function Hero() {
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 px-5 pb-20 pt-14 sm:px-8 sm:pb-28 sm:pt-20 lg:grid-cols-2 lg:pt-28">
         <div>
-          <motion.p
-            variants={fadeUp}
-            custom={-1}
-            initial="hidden"
-            animate="show"
-            className="text-sm italic text-olive-600 dark:text-olive-400"
-          >
-            "Together, let us share and build your story."
-          </motion.p>
+          <motion.div variants={fadeUp} custom={-1} initial="hidden" animate="show">
+            <EditableText
+              as="p"
+              className="text-sm italic text-olive-600 dark:text-olive-400"
+              value={tagline}
+              onSave={(v) => saveSetting("hero.tagline", v)}
+            />
+          </motion.div>
 
           <motion.div variants={fadeUp} custom={0} initial="hidden" animate="show" className="mt-3">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white/70 px-3.5 py-1.5 text-xs font-semibold text-ink-600 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-ink-300">
@@ -52,26 +66,24 @@ export function Hero() {
             </span>
           </motion.div>
 
-          <motion.h1
-            variants={fadeUp}
-            custom={1}
-            initial="hidden"
-            animate="show"
-            className="mt-6 text-[40px] leading-[1.05] font-semibold text-ink-950 sm:text-[52px] lg:text-[60px] dark:text-white"
-          >
-            Build Your Dream Project<br className="hidden sm:block" /> with Confidence
-          </motion.h1>
+          <motion.div variants={fadeUp} custom={1} initial="hidden" animate="show" className="mt-6">
+            <EditableText
+              as="h1"
+              className="text-[40px] leading-[1.05] font-semibold text-ink-950 sm:text-[52px] lg:text-[60px] dark:text-white"
+              value={headline}
+              onSave={(v) => saveSetting("hero.headline", v)}
+            />
+          </motion.div>
 
-          <motion.p
-            variants={fadeUp}
-            custom={2}
-            initial="hidden"
-            animate="show"
-            className="mt-6 max-w-lg text-lg leading-relaxed text-ink-500 dark:text-ink-400"
-          >
-            Instantly estimate your design fee and construction cost using AI-powered
-            calculations — tailored to your province, quality standard, and building program.
-          </motion.p>
+          <motion.div variants={fadeUp} custom={2} initial="hidden" animate="show" className="mt-6 max-w-lg">
+            <EditableText
+              as="p"
+              multiline
+              className="text-lg leading-relaxed text-ink-500 dark:text-ink-400"
+              value={subtitle}
+              onSave={(v) => saveSetting("hero.subtitle", v)}
+            />
+          </motion.div>
 
           <motion.div
             variants={fadeUp}
@@ -122,7 +134,7 @@ export function Hero() {
           <motion.div className="absolute -left-6 top-8 sm:-left-10" animate={{ y: [0, -12, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}>
             <GlassCard className="w-52 p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Estimated Investment</p>
-              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">₱12,480,000</p>
+              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">{formatPHP(sample.investment)}</p>
               <div className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-600">
                 <TrendingUp size={13} /> Mid-Market tier
               </div>
@@ -136,7 +148,7 @@ export function Hero() {
           >
             <GlassCard className="w-48 p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Timeline</p>
-              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">14 months</p>
+              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">{sample.timelineMonths} months</p>
               <div className="mt-2 flex items-center gap-1 text-xs font-medium text-olive-600">
                 <CalendarClock size={13} /> Design to turnover
               </div>
@@ -152,10 +164,10 @@ export function Hero() {
               <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Risk Score</p>
               <div className="mt-1.5 flex items-center gap-2">
                 <div className="h-1.5 flex-1 rounded-full bg-ink-100 dark:bg-white/10">
-                  <div className="h-1.5 w-[28%] rounded-full bg-emerald-500" />
+                  <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${sample.riskPct}%` }} />
                 </div>
                 <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                  <ShieldCheck size={13} /> Low
+                  <ShieldCheck size={13} /> {sample.riskLabel}
                 </span>
               </div>
             </GlassCard>

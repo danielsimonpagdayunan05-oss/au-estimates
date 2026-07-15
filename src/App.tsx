@@ -3,9 +3,12 @@ import { Suspense, lazy, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { LandingPage } from "@/pages/LandingPage";
+import { AdminAuthProvider } from "@/lib/adminAuth";
+import { EditModeToggle } from "@/components/admin/EditModeToggle";
 
 const EstimatePage = lazy(() => import("@/pages/EstimatePage").then((m) => ({ default: m.EstimatePage })));
 const SummaryPage = lazy(() => import("@/pages/SummaryPage").then((m) => ({ default: m.SummaryPage })));
+const AdminPage = lazy(() => import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage })));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -26,21 +29,26 @@ function PageFallback() {
 export default function App() {
   const { pathname } = useLocation();
   const showMobileNav = pathname === "/";
+  const isAdminRoute = pathname.startsWith("/admin");
 
   return (
-    <div className="min-h-screen bg-white dark:bg-ink-950">
-      <ScrollToTop />
-      <Navbar />
-      <main className={showMobileNav ? "pb-20 sm:pb-0" : ""}>
-        <Suspense fallback={<PageFallback />}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/estimate" element={<EstimatePage />} />
-            <Route path="/summary" element={<SummaryPage />} />
-          </Routes>
-        </Suspense>
-      </main>
-      {showMobileNav && <MobileNav />}
-    </div>
+    <AdminAuthProvider>
+      <div className="min-h-screen bg-white dark:bg-ink-950">
+        <ScrollToTop />
+        {!isAdminRoute && <Navbar />}
+        <main className={showMobileNav ? "pb-20 sm:pb-0" : ""}>
+          <Suspense fallback={<PageFallback />}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/estimate" element={<EstimatePage />} />
+              <Route path="/summary" element={<SummaryPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+            </Routes>
+          </Suspense>
+        </main>
+        {showMobileNav && <MobileNav />}
+        {!isAdminRoute && <EditModeToggle />}
+      </div>
+    </AdminAuthProvider>
   );
 }
