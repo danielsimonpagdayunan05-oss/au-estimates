@@ -1,0 +1,9 @@
+export const ROOF_TYPES = ["Long-span Metal", "Standing Seam Metal", "Concrete Slab", "Clay Tile", "Shingle", "Green Roof"];
+export const FOUNDATION_TYPES = ["Spread Footing", "Combined Footing", "Raft Foundation", "Pile Foundation", "Caisson"];
+export const STRUCTURAL_SYSTEMS = ["Reinforced Concrete Frame", "Steel Frame", "Load-bearing CHB", "Precast Concrete", "Hybrid Steel-Concrete", "Light-gauge Steel"];
+export const WALL_MATERIALS = ["Concrete Hollow Block", "Reinforced Concrete", "Insulated Panel", "Glass Curtain Wall", "Fiber Cement Board", "Brick"];
+export const CEILING_TYPES = ["Gypsum Board", "Fiber Cement", "Exposed/Industrial", "Acoustic Panel", "Metal Ceiling"];
+export const FLOOR_FINISHES = ["Ceramic Tile", "Porcelain Tile", "Vinyl Plank", "Engineered Wood", "Epoxy", "Natural Stone/Marble", "Polished Concrete"];
+export const WINDOW_SYSTEMS = ["Aluminum Sliding", "Aluminum Awning", "uPVC Casement", "Double-Glazed Curtain Wall", "Steel Casement"];
+export const DOOR_MATERIALS = ["Solid Wood", "Panel Door", "Fire-rated Steel", "Glass & Aluminum", "Flush Hollow Core"];
+export const MEP_COMPLEXITY_OPTIONS = ["Simple", "Standard", "Advanced", "Mission-Critical"] as const;
