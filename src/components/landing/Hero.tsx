@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
-import { ArrowRight, CalendarClock, Sparkles, TrendingUp, ShieldCheck } from "lucide-react";
+import { ArrowRight, CalendarClock, TrendingUp, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { GlassCard } from "@/components/ui/Card";
 import { EditableText } from "@/components/admin/EditableText";
@@ -62,13 +62,6 @@ export function Hero() {
               value={tagline}
               onSave={(v) => saveSetting("hero.tagline", v)}
             />
-          </motion.div>
-
-          <motion.div variants={fadeUp} custom={0} initial="hidden" animate="show" className="mt-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white/70 px-3.5 py-1.5 text-xs font-semibold text-ink-600 backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-ink-300">
-              <Sparkles size={13} className="text-olive-500" />
-              AI-Powered Cost Intelligence
-            </span>
           </motion.div>
 
           <motion.div variants={fadeUp} custom={1} initial="hidden" animate="show" className="mt-6">
