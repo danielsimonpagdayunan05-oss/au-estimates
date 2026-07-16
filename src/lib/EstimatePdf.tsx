@@ -124,7 +124,7 @@ export function EstimatePdf({ selections, estimate, client, reportId, qrDataUrl,
           </View>
         ))}
 
-        <Text style={styles.sectionTitle}>AI Recommendations</Text>
+        <Text style={styles.sectionTitle}>Recommendations</Text>
         {estimate.recommendations.slice(0, 8).map((r) => (
           <View style={styles.bullet} key={r}>
             <Text style={styles.bulletDot}>•</Text>

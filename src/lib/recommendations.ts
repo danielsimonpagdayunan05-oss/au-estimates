@@ -2,7 +2,6 @@ import type { EstimateResult, WizardSelections } from "@/types/estimate";
 
 /**
  * Deterministic, rules-based recommendation engine (no external AI calls).
- * Framed as "AI Recommendations" in the UI but driven entirely by selection heuristics.
  */
 export function buildRecommendations(
   s: WizardSelections,

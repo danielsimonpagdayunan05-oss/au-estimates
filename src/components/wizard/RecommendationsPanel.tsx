@@ -20,7 +20,7 @@ export function RecommendationsPanel() {
           <Wand2 size={16} />
         </span>
         <div>
-          <p className="text-sm font-semibold text-ink-900 dark:text-white">AI Recommendations</p>
+          <p className="text-sm font-semibold text-ink-900 dark:text-white">Recommendations</p>
           <p className="text-xs text-ink-400">Based on your selections</p>
         </div>
       </div>

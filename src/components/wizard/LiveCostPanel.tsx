@@ -35,7 +35,7 @@ export function LiveCostPanel({ compact = false }: { compact?: boolean }) {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-400">Live AI Estimate</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink-400">Live Cost Estimate</span>
       </div>
 
       <p className="mt-4 text-xs font-medium text-ink-400">Estimated Total Investment</p>
