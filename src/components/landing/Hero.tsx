@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
 import { ArrowRight, CalendarClock, TrendingUp, ShieldCheck } from "lucide-react";
@@ -8,6 +9,8 @@ import { EditableNumber } from "@/components/admin/EditableNumber";
 import { useSiteData } from "@/lib/useSiteData";
 import { api } from "@/lib/api";
 import { formatPHP, formatNumber } from "@/lib/formatters";
+
+const HeroModelViewer = lazy(() => import("./HeroModelViewer").then((m) => ({ default: m.HeroModelViewer })));
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -24,6 +27,7 @@ export function Hero() {
   const headline = (data.settings["hero.headline"] as string) ?? "";
   const subtitle = (data.settings["hero.subtitle"] as string) ?? "";
   const sample = data.settings["hero.sampleEstimate"] ?? { investment: 12480000, timelineMonths: 14, riskLabel: "Low", riskPct: 28 };
+  const modelKey = data.settings["hero.modelKey"];
 
   const saveSetting = async (key: string, value: unknown) => {
     await api.put("/api/admin/settings", { key, value });
@@ -117,17 +121,27 @@ export function Hero() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
           className="relative mx-auto aspect-[4/5] w-full max-w-md"
         >
-          <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-ink-900 via-ink-800 to-olive-900 shadow-[var(--shadow-soft-lg)]">
-            <div
-              className="absolute inset-0 rounded-[32px] opacity-40"
-              style={{
-                backgroundImage:
-                  "linear-gradient(135deg, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(45deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
-                backgroundSize: "28px 28px",
-              }}
-            />
-            <div className="absolute bottom-0 left-0 right-0 h-2/3 rounded-b-[32px] bg-gradient-to-t from-olive-600/30 to-transparent" />
-          </div>
+          {modelKey ? (
+            <Suspense
+              fallback={<div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-ink-900 via-ink-800 to-olive-900 shadow-[var(--shadow-soft-lg)]" />}
+            >
+              <div className="absolute inset-0 rounded-[32px] shadow-[var(--shadow-soft-lg)]">
+                <HeroModelViewer src={`/api/image?key=${encodeURIComponent(modelKey)}`} />
+              </div>
+            </Suspense>
+          ) : (
+            <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-ink-900 via-ink-800 to-olive-900 shadow-[var(--shadow-soft-lg)]">
+              <div
+                className="absolute inset-0 rounded-[32px] opacity-40"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(135deg, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(45deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
+                  backgroundSize: "28px 28px",
+                }}
+              />
+              <div className="absolute bottom-0 left-0 right-0 h-2/3 rounded-b-[32px] bg-gradient-to-t from-olive-600/30 to-transparent" />
+            </div>
+          )}
 
           <motion.div className="absolute -left-6 top-8 sm:-left-10" animate={{ y: [0, -12, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}>
             <GlassCard className="w-52 p-4">

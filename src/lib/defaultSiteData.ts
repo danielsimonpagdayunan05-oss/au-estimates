@@ -36,6 +36,7 @@ export const DEFAULT_SITE_DATA: SiteDataResponse = {
       "Instantly estimate your design fee and construction cost — tailored to your province, quality standard, and building program.",
     "hero.tagline": "Together, let us share and build your story.",
     "hero.sampleEstimate": { investment: 12480000, timelineMonths: 14, riskLabel: "Low", riskPct: 28 },
+    "hero.modelKey": null,
     "estimator.categoryRates": CATEGORY_BASE_RATE,
     "estimator.qualityMultipliers": QUALITY_MULTIPLIER,
     "estimator.projectTypeMultipliers": PROJECT_TYPE_MULTIPLIER,

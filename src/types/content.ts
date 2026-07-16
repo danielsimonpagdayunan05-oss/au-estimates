@@ -91,6 +91,7 @@ export interface SiteSettings {
   "hero.subtitle"?: string;
   "hero.tagline"?: string;
   "hero.sampleEstimate"?: { investment: number; timelineMonths: number; riskLabel: string; riskPct: number };
+  "hero.modelKey"?: string | null;
   "estimator.categoryRates"?: Record<string, number>;
   "estimator.qualityMultipliers"?: Record<string, number>;
   "estimator.projectTypeMultipliers"?: Record<string, number>;

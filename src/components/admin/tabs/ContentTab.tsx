@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Box, ImagePlus, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import { api, describeApiError } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
@@ -7,6 +7,15 @@ import type { StatItemRow } from "@/types/content";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TextField, NumberField } from "@/components/admin/AdminField";
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export function ContentTab() {
   const { data, isLoading, refetch } = useSiteData();
@@ -92,6 +101,18 @@ export function ContentTab() {
       </Card>
 
       <Card className="p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Hero 3D Model</h2>
+        <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">
+          Upload a .glb or .gltf 3D model to replace the hero's background panel with an interactive model visitors can drag to rotate and pinch to zoom.
+        </p>
+        {isLoading ? (
+          <Loader2 size={20} className="mt-4 animate-spin text-olive-500" />
+        ) : (
+          <HeroModelUploader modelKey={(data.settings["hero.modelKey"] as string | null) ?? null} onChanged={refetch} />
+        )}
+      </Card>
+
+      <Card className="p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Landing Page Stats</h2>
         <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">The animated numbers shown on the homepage.</p>
         {isLoading ? (
@@ -148,6 +169,77 @@ function HeroSampleEditor({
         {saved && <span className="text-sm text-emerald-600">Saved</span>}
         {error && <span className="text-sm font-medium text-red-500">{error}</span>}
       </div>
+    </div>
+  );
+}
+
+function HeroModelUploader({ modelKey, onChanged }: { modelKey: string | null; onChanged: () => Promise<unknown> }) {
+  const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    setError(null);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const res = await api.post<{ key: string }>("/api/admin/upload", { filename: file.name, dataUrl });
+      await api.put("/api/admin/settings", { key: "hero.modelKey", value: res.key });
+      await onChanged();
+    } catch (err) {
+      setError(describeApiError(err));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const remove = async () => {
+    setRemoving(true);
+    setError(null);
+    try {
+      await api.put("/api/admin/settings", { key: "hero.modelKey", value: null });
+      await onChanged();
+    } catch (err) {
+      setError(describeApiError(err));
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <div className="mt-5">
+      <div className="flex flex-wrap items-center gap-4">
+        {modelKey ? (
+          <div className="flex items-center gap-2 rounded-lg bg-ink-50/70 px-3 py-2 text-sm font-medium text-ink-700 dark:bg-white/[0.04] dark:text-ink-200">
+            <Box size={16} className="text-olive-500" />
+            Model uploaded
+            <button onClick={remove} disabled={removing} className="ml-1 text-ink-400 hover:text-red-500" aria-label="Remove 3D model">
+              {removing ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+            </button>
+          </div>
+        ) : (
+          <span className="text-sm text-ink-400">No model uploaded yet — the hero shows its default gradient panel.</span>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          icon={uploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+        >
+          {uploading ? "Uploading..." : modelKey ? "Replace Model" : "Upload Model"}
+        </Button>
+      </div>
+      {error && <p className="mt-2 text-xs font-medium text-red-500">{error}</p>}
     </div>
   );
 }
