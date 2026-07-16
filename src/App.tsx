@@ -6,6 +6,7 @@ import { LandingPage } from "@/pages/LandingPage";
 import { AdminAuthProvider, useAdminAuth } from "@/lib/adminAuth";
 import { EditModeToggle } from "@/components/admin/EditModeToggle";
 import { AcceptInviteForm } from "@/components/admin/AcceptInviteForm";
+import { ResetPasswordForm } from "@/components/admin/ResetPasswordForm";
 
 const EstimatePage = lazy(() => import("@/pages/EstimatePage").then((m) => ({ default: m.EstimatePage })));
 const SummaryPage = lazy(() => import("@/pages/SummaryPage").then((m) => ({ default: m.SummaryPage })));
@@ -29,16 +30,25 @@ function PageFallback() {
 
 function AppShell() {
   const { pathname } = useLocation();
-  const { inviteToken } = useAdminAuth();
+  const { inviteToken, recoveryPending } = useAdminAuth();
   const showMobileNav = pathname === "/";
   const isAdminRoute = pathname.startsWith("/admin");
 
-  // An invite link can land the user on any page (the redirect target is the site
-  // root) — handle it here so the "set your password" step never gets missed.
+  // Invite and password-recovery links can land the user on any page (the redirect
+  // target is the site root) — handle both here so the "set password" step never
+  // gets missed regardless of which page the link opens.
   if (inviteToken) {
     return (
       <div className="min-h-screen bg-white dark:bg-ink-950">
         <AcceptInviteForm />
+      </div>
+    );
+  }
+
+  if (recoveryPending) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-ink-950">
+        <ResetPasswordForm />
       </div>
     );
   }

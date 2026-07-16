@@ -6,6 +6,7 @@ import {
   login as identityLogin,
   logout as identityLogout,
   onAuthChange,
+  updateUser,
   type User,
 } from "@netlify/identity";
 
@@ -19,6 +20,8 @@ interface AdminAuthState {
   logout: () => Promise<void>;
   inviteToken: string | null;
   acceptInvite: (password: string) => Promise<User>;
+  recoveryPending: boolean;
+  completePasswordReset: (password: string) => Promise<User>;
 }
 
 const AdminAuthContext = createContext<AdminAuthState | null>(null);
@@ -28,6 +31,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [recoveryPending, setRecoveryPending] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -35,6 +39,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         const result = await handleAuthCallback();
         if (result?.type === "invite" && result.token) {
           setInviteToken(result.token);
+        } else if (result?.type === "recovery") {
+          // Recovery links log the user in directly (by Netlify Identity's design) without
+          // letting them choose a new password — that has to happen as a separate step here.
+          setRecoveryPending(true);
         }
       } catch {
         // no callback present, or it was invalid/expired — proceed to a normal load
@@ -66,6 +74,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       setInviteToken(null);
       setUser(newUser);
       return newUser;
+    },
+    recoveryPending,
+    completePasswordReset: async (password: string) => {
+      const updatedUser = await updateUser({ password });
+      setRecoveryPending(false);
+      setUser(updatedUser);
+      return updatedUser;
     },
   };
 
