@@ -25,3 +25,10 @@ export const api = {
   patch: <T>(url: string, body: unknown) => request<T>(url, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(url: string, body: unknown) => request<T>(url, { method: "DELETE", body: JSON.stringify(body) }),
 };
+
+/** Turns a caught save/load error into a message safe to show an admin user. */
+export function describeApiError(err: unknown): string {
+  if (err instanceof ApiError && err.status === 401) return "Your admin session expired — refresh the page and sign in again.";
+  if (err instanceof ApiError) return err.message;
+  return "Couldn't save — check your connection and try again.";
+}

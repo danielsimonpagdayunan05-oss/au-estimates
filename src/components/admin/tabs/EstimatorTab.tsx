@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, describeApiError } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
 import type { FeeTier, PhaseItem, ProvinceRow, ServiceRow } from "@/types/content";
@@ -24,6 +24,7 @@ function PhaseListEditor({
   const [rows, setRows] = useState(phases);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setRows(phases), [phases]);
 
@@ -31,11 +32,14 @@ function PhaseListEditor({
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       await api.put("/api/admin/settings", { key: settingsKey, value: rows });
       await onSaved();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(describeApiError(err));
     } finally {
       setSaving(false);
     }
@@ -76,6 +80,7 @@ function PhaseListEditor({
           Save
         </Button>
         {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        {error && <span className="text-sm font-medium text-red-500">{error}</span>}
       </div>
     </Card>
   );
@@ -97,16 +102,20 @@ function RecordMapEditor({
   const [draft, setDraft] = useState(values);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setDraft(values), [values]);
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       await api.put("/api/admin/settings", { key: settingsKey, value: draft });
       await onSaved();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(describeApiError(err));
     } finally {
       setSaving(false);
     }
@@ -126,6 +135,7 @@ function RecordMapEditor({
           Save
         </Button>
         {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        {error && <span className="text-sm font-medium text-red-500">{error}</span>}
       </div>
     </Card>
   );
@@ -135,16 +145,20 @@ function FeeTiersEditor({ tiers, onSaved }: { tiers: FeeTier[]; onSaved: () => P
   const [draft, setDraft] = useState(tiers);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setDraft(tiers), [tiers]);
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       await api.put("/api/admin/settings", { key: "estimator.architecturalFeeTiers", value: draft });
       await onSaved();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(describeApiError(err));
     } finally {
       setSaving(false);
     }
@@ -182,6 +196,7 @@ function FeeTiersEditor({ tiers, onSaved }: { tiers: FeeTier[]; onSaved: () => P
           Save
         </Button>
         {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        {error && <span className="text-sm font-medium text-red-500">{error}</span>}
       </div>
     </Card>
   );
@@ -190,6 +205,7 @@ function FeeTiersEditor({ tiers, onSaved }: { tiers: FeeTier[]; onSaved: () => P
 function ProvincesEditor({ provinces, onSaved }: { provinces: ProvinceRow[]; onSaved: () => Promise<unknown> }) {
   const [rows, setRows] = useState(provinces);
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [errors, setErrors] = useState<Record<number, string>>({});
 
   useEffect(() => setRows(provinces), [provinces]);
 
@@ -197,6 +213,7 @@ function ProvincesEditor({ provinces, onSaved }: { provinces: ProvinceRow[]; onS
 
   const save = async (row: ProvinceRow) => {
     setSavingId(row.id);
+    setErrors((e) => ({ ...e, [row.id]: "" }));
     try {
       if (row.id < 0) {
         await api.post("/api/admin/provinces", { name: row.name, region: row.region, multiplier: row.multiplier, cities: row.cities, sortOrder: row.sortOrder });
@@ -204,6 +221,8 @@ function ProvincesEditor({ provinces, onSaved }: { provinces: ProvinceRow[]; onS
         await api.put("/api/admin/provinces", row);
       }
       await onSaved();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [row.id]: describeApiError(err) }));
     } finally {
       setSavingId(null);
     }
@@ -212,9 +231,12 @@ function ProvincesEditor({ provinces, onSaved }: { provinces: ProvinceRow[]; onS
   const remove = async (id: number) => {
     if (id < 0) return setRows((r) => r.filter((row) => row.id !== id));
     setSavingId(id);
+    setErrors((e) => ({ ...e, [id]: "" }));
     try {
       await api.delete("/api/admin/provinces", { id });
       await onSaved();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [id]: describeApiError(err) }));
     } finally {
       setSavingId(null);
     }
@@ -226,20 +248,23 @@ function ProvincesEditor({ provinces, onSaved }: { provinces: ProvinceRow[]; onS
       <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">Multiplier of 1.0 = same as Metro Manila baseline. Cities are comma-separated.</p>
       <div className="mt-4 space-y-3">
         {rows.map((row) => (
-          <div key={row.id} className="grid grid-cols-2 gap-3 rounded-xl border border-ink-100 p-4 sm:grid-cols-6 sm:items-end dark:border-white/[0.06]">
-            <TextField label="Province" value={row.name} onChange={(v) => update(row.id, { name: v })} />
-            <TextField label="Region" value={row.region} onChange={(v) => update(row.id, { region: v })} />
-            <NumberField label="Multiplier" step={0.01} value={row.multiplier} onChange={(v) => update(row.id, { multiplier: v })} />
-            <TextField
-              label="Cities"
-              className="sm:col-span-2"
-              value={row.cities.join(", ")}
-              onChange={(v) => update(row.id, { cities: v.split(",").map((c) => c.trim()).filter(Boolean) })}
-            />
-            <div className="col-span-2 flex gap-2 sm:col-span-1">
-              <Button size="sm" variant="secondary" onClick={() => save(row)} disabled={savingId === row.id} icon={savingId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} />
-              <Button size="sm" variant="outline" onClick={() => remove(row.id)} disabled={savingId === row.id} icon={<Trash2 size={14} />} />
+          <div key={row.id} className="rounded-xl border border-ink-100 p-4 dark:border-white/[0.06]">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-6 sm:items-end">
+              <TextField label="Province" value={row.name} onChange={(v) => update(row.id, { name: v })} />
+              <TextField label="Region" value={row.region} onChange={(v) => update(row.id, { region: v })} />
+              <NumberField label="Multiplier" step={0.01} value={row.multiplier} onChange={(v) => update(row.id, { multiplier: v })} />
+              <TextField
+                label="Cities"
+                className="sm:col-span-2"
+                value={row.cities.join(", ")}
+                onChange={(v) => update(row.id, { cities: v.split(",").map((c) => c.trim()).filter(Boolean) })}
+              />
+              <div className="col-span-2 flex gap-2 sm:col-span-1">
+                <Button size="sm" variant="secondary" onClick={() => save(row)} disabled={savingId === row.id} icon={savingId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} />
+                <Button size="sm" variant="outline" onClick={() => remove(row.id)} disabled={savingId === row.id} icon={<Trash2 size={14} />} />
+              </div>
             </div>
+            {errors[row.id] && <p className="mt-2 text-xs font-medium text-red-500">{errors[row.id]}</p>}
           </div>
         ))}
       </div>
@@ -262,6 +287,7 @@ const FEE_TYPES = ["per_sqm", "flat", "percent"] as const;
 function ServicesEditor({ services, onSaved }: { services: ServiceRow[]; onSaved: () => Promise<unknown> }) {
   const [rows, setRows] = useState(services);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => setRows(services), [services]);
 
@@ -269,10 +295,13 @@ function ServicesEditor({ services, onSaved }: { services: ServiceRow[]; onSaved
 
   const save = async (row: ServiceRow, isNew: boolean) => {
     setSavingId(row.id);
+    setErrors((e) => ({ ...e, [row.id]: "" }));
     try {
       if (isNew) await api.post("/api/admin/services", row);
       else await api.put("/api/admin/services", row);
       await onSaved();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [row.id]: describeApiError(err) }));
     } finally {
       setSavingId(null);
     }
@@ -281,9 +310,12 @@ function ServicesEditor({ services, onSaved }: { services: ServiceRow[]; onSaved
   const remove = async (id: string, isNew: boolean) => {
     if (isNew) return setRows((r) => r.filter((row) => row.id !== id));
     setSavingId(id);
+    setErrors((e) => ({ ...e, [id]: "" }));
     try {
       await api.delete("/api/admin/services", { id });
       await onSaved();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [id]: describeApiError(err) }));
     } finally {
       setSavingId(null);
     }
@@ -297,37 +329,40 @@ function ServicesEditor({ services, onSaved }: { services: ServiceRow[]; onSaved
         {rows.map((row) => {
           const isNew = row.id.startsWith("new-");
           return (
-            <div key={row.id} className="grid grid-cols-2 gap-3 rounded-xl border border-ink-100 p-4 sm:grid-cols-6 sm:items-end dark:border-white/[0.06]">
-              <TextField label="Label" className="sm:col-span-2" value={row.label} onChange={(v) => update(row.id, { label: v })} />
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">Category</span>
-                <select
-                  value={row.category}
-                  onChange={(e) => update(row.id, { category: e.target.value as ServiceRow["category"] })}
-                  className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-900 outline-none dark:border-white/10 dark:bg-ink-900 dark:text-white"
-                >
-                  {SERVICE_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">Fee Type</span>
-                <select
-                  value={row.feeType}
-                  onChange={(e) => update(row.id, { feeType: e.target.value as ServiceRow["feeType"] })}
-                  className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-900 outline-none dark:border-white/10 dark:bg-ink-900 dark:text-white"
-                >
-                  {FEE_TYPES.map((f) => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
-                </select>
-              </label>
-              <NumberField label="Value" step={0.001} value={row.value} onChange={(v) => update(row.id, { value: v })} />
-              <div className="flex gap-2">
-                <Button size="sm" variant="secondary" onClick={() => save(row, isNew)} disabled={savingId === row.id} icon={savingId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} />
-                <Button size="sm" variant="outline" onClick={() => remove(row.id, isNew)} disabled={savingId === row.id} icon={<Trash2 size={14} />} />
+            <div key={row.id} className="rounded-xl border border-ink-100 p-4 dark:border-white/[0.06]">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-6 sm:items-end">
+                <TextField label="Label" className="sm:col-span-2" value={row.label} onChange={(v) => update(row.id, { label: v })} />
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">Category</span>
+                  <select
+                    value={row.category}
+                    onChange={(e) => update(row.id, { category: e.target.value as ServiceRow["category"] })}
+                    className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-900 outline-none dark:border-white/10 dark:bg-ink-900 dark:text-white"
+                  >
+                    {SERVICE_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">Fee Type</span>
+                  <select
+                    value={row.feeType}
+                    onChange={(e) => update(row.id, { feeType: e.target.value as ServiceRow["feeType"] })}
+                    className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-900 outline-none dark:border-white/10 dark:bg-ink-900 dark:text-white"
+                  >
+                    {FEE_TYPES.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </label>
+                <NumberField label="Value" step={0.001} value={row.value} onChange={(v) => update(row.id, { value: v })} />
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => save(row, isNew)} disabled={savingId === row.id} icon={savingId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} />
+                  <Button size="sm" variant="outline" onClick={() => remove(row.id, isNew)} disabled={savingId === row.id} icon={<Trash2 size={14} />} />
+                </div>
               </div>
+              {errors[row.id] && <p className="mt-2 text-xs font-medium text-red-500">{errors[row.id]}</p>}
             </div>
           );
         })}
@@ -446,23 +481,30 @@ export function EstimatorTab() {
 function SingleRateField({ settingsKey, label, value, onSaved }: { settingsKey: string; label: string; value: number; onSaved: () => Promise<unknown> }) {
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setDraft(value), [value]);
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       await api.put("/api/admin/settings", { key: settingsKey, value: draft });
       await onSaved();
+    } catch (err) {
+      setError(describeApiError(err));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="flex items-end gap-2">
-      <NumberField label={label} step={0.001} value={draft} onChange={setDraft} />
-      <Button size="sm" variant="secondary" onClick={save} disabled={saving} icon={saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} />
+    <div>
+      <div className="flex items-end gap-2">
+        <NumberField label={label} step={0.001} value={draft} onChange={setDraft} />
+        <Button size="sm" variant="secondary" onClick={save} disabled={saving} icon={saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} />
+      </div>
+      {error && <p className="mt-1 text-xs font-medium text-red-500">{error}</p>}
     </div>
   );
 }

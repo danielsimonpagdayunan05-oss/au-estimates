@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Plus, Save, Star, Trash2, X } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, describeApiError } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import type { PortfolioItemRow } from "@/types/content";
 import { Card } from "@/components/ui/Card";
@@ -99,13 +99,17 @@ export function PortfolioTab() {
 
 function PortfolioCard({ item, onEdit, onDeleted }: { item: PortfolioItemRow; onEdit: () => void; onDeleted: () => Promise<unknown> }) {
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const remove = async () => {
     if (!confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
     setDeleting(true);
+    setError(null);
     try {
       await api.delete("/api/admin/portfolio", { id: item.id });
       await onDeleted();
+    } catch (err) {
+      setError(describeApiError(err));
     } finally {
       setDeleting(false);
     }
@@ -140,6 +144,7 @@ function PortfolioCard({ item, onEdit, onDeleted }: { item: PortfolioItemRow; on
             Delete
           </Button>
         </div>
+        {error && <p className="mt-2 text-xs font-medium text-red-500">{error}</p>}
       </div>
     </Card>
   );
@@ -149,14 +154,19 @@ function PortfolioForm({ draft, onCancel, onSaved }: { draft: DraftItem; onCance
   const [form, setForm] = useState(draft);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
     setUploading(true);
+    setUploadError(null);
     try {
       const dataUrl = await fileToDataUrl(file);
       const res = await api.post<{ key: string }>("/api/admin/upload", { filename: file.name, dataUrl });
       setForm((f) => ({ ...f, coverImageKey: res.key }));
+    } catch (err) {
+      setUploadError(describeApiError(err));
     } finally {
       setUploading(false);
     }
@@ -164,6 +174,7 @@ function PortfolioForm({ draft, onCancel, onSaved }: { draft: DraftItem; onCance
 
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const payload = {
         title: form.title,
@@ -178,6 +189,8 @@ function PortfolioForm({ draft, onCancel, onSaved }: { draft: DraftItem; onCance
       if (form.id === null) await api.post("/api/admin/portfolio", payload);
       else await api.put("/api/admin/portfolio", { id: form.id, ...payload });
       await onSaved();
+    } catch (err) {
+      setSaveError(describeApiError(err));
     } finally {
       setSaving(false);
     }
@@ -237,15 +250,17 @@ function PortfolioForm({ draft, onCancel, onSaved }: { draft: DraftItem; onCance
             {uploading ? "Uploading..." : "Upload Image"}
           </Button>
         </div>
+        {uploadError && <p className="mt-2 text-xs font-medium text-red-500">{uploadError}</p>}
       </div>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex items-center gap-3">
         <Button onClick={save} disabled={saving || uploading || !form.title} icon={saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}>
           {saving ? "Saving..." : "Save Project"}
         </Button>
         <Button variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
+        {saveError && <span className="text-sm font-medium text-red-500">{saveError}</span>}
       </div>
     </Card>
   );

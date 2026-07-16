@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, describeApiError } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
 import type { StatItemRow } from "@/types/content";
@@ -18,6 +18,7 @@ export function ContentTab() {
   });
   const [savingHero, setSavingHero] = useState(false);
   const [heroSaved, setHeroSaved] = useState(false);
+  const [heroError, setHeroError] = useState<string | null>(null);
 
   useEffect(() => {
     setHero({
@@ -30,11 +31,14 @@ export function ContentTab() {
 
   const saveHero = async () => {
     setSavingHero(true);
+    setHeroError(null);
     try {
       await Promise.all(Object.entries(hero).map(([key, value]) => api.put("/api/admin/settings", { key, value })));
       await refetch();
       setHeroSaved(true);
       setTimeout(() => setHeroSaved(false), 2000);
+    } catch (err) {
+      setHeroError(describeApiError(err));
     } finally {
       setSavingHero(false);
     }
@@ -71,6 +75,7 @@ export function ContentTab() {
             {savingHero ? "Saving..." : "Save Hero Content"}
           </Button>
           {heroSaved && <span className="text-sm text-emerald-600">Saved</span>}
+          {heroError && <span className="text-sm font-medium text-red-500">{heroError}</span>}
         </div>
       </Card>
 
@@ -109,16 +114,20 @@ function HeroSampleEditor({
   const [draft, setDraft] = useState(sample);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setDraft(sample), [sample]);
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       await api.put("/api/admin/settings", { key: "hero.sampleEstimate", value: draft });
       await onChanged();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(describeApiError(err));
     } finally {
       setSaving(false);
     }
@@ -137,6 +146,7 @@ function HeroSampleEditor({
           Save
         </Button>
         {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        {error && <span className="text-sm font-medium text-red-500">{error}</span>}
       </div>
     </div>
   );
@@ -146,6 +156,7 @@ function StatsEditor({ stats, onChanged }: { stats: StatItemRow[]; onChanged: ()
   const [rows, setRows] = useState(stats);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
+  const [errors, setErrors] = useState<Record<number, string>>({});
 
   useEffect(() => setRows(stats), [stats]);
 
@@ -155,6 +166,7 @@ function StatsEditor({ stats, onChanged }: { stats: StatItemRow[]; onChanged: ()
 
   const saveRow = async (row: StatItemRow) => {
     setSavingId(row.id);
+    setErrors((e) => ({ ...e, [row.id]: "" }));
     try {
       if (row.id < 0) {
         await api.post("/api/admin/stats", { label: row.label, value: row.value, prefix: row.prefix, suffix: row.suffix, sortOrder: row.sortOrder });
@@ -162,6 +174,8 @@ function StatsEditor({ stats, onChanged }: { stats: StatItemRow[]; onChanged: ()
         await api.put("/api/admin/stats", row);
       }
       await onChanged();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [row.id]: describeApiError(err) }));
     } finally {
       setSavingId(null);
     }
@@ -173,9 +187,12 @@ function StatsEditor({ stats, onChanged }: { stats: StatItemRow[]; onChanged: ()
       return;
     }
     setSavingId(id);
+    setErrors((e) => ({ ...e, [id]: "" }));
     try {
       await api.delete("/api/admin/stats", { id });
       await onChanged();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [id]: describeApiError(err) }));
     } finally {
       setSavingId(null);
     }
@@ -190,19 +207,22 @@ function StatsEditor({ stats, onChanged }: { stats: StatItemRow[]; onChanged: ()
   return (
     <div className="mt-5 space-y-3">
       {rows.map((row) => (
-        <div key={row.id} className="grid grid-cols-2 gap-3 rounded-xl border border-ink-100 p-4 sm:grid-cols-5 sm:items-end dark:border-white/[0.06]">
-          <TextField label="Label" value={row.label} onChange={(v) => updateRow(row.id, { label: v })} className="sm:col-span-2" />
-          <NumberField label="Value" value={row.value} onChange={(v) => updateRow(row.id, { value: v })} />
-          <TextField label="Prefix" value={row.prefix} onChange={(v) => updateRow(row.id, { prefix: v })} />
-          <TextField label="Suffix" value={row.suffix} onChange={(v) => updateRow(row.id, { suffix: v })} />
-          <div className="col-span-2 flex gap-2 sm:col-span-5 sm:justify-end">
-            <Button size="sm" variant="secondary" onClick={() => saveRow(row)} disabled={savingId === row.id} icon={savingId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}>
-              Save
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => deleteRow(row.id)} disabled={savingId === row.id} icon={<Trash2 size={14} />}>
-              Delete
-            </Button>
+        <div key={row.id} className="rounded-xl border border-ink-100 p-4 dark:border-white/[0.06]">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 sm:items-end">
+            <TextField label="Label" value={row.label} onChange={(v) => updateRow(row.id, { label: v })} className="sm:col-span-2" />
+            <NumberField label="Value" value={row.value} onChange={(v) => updateRow(row.id, { value: v })} />
+            <TextField label="Prefix" value={row.prefix} onChange={(v) => updateRow(row.id, { prefix: v })} />
+            <TextField label="Suffix" value={row.suffix} onChange={(v) => updateRow(row.id, { suffix: v })} />
+            <div className="col-span-2 flex gap-2 sm:col-span-5 sm:justify-end">
+              <Button size="sm" variant="secondary" onClick={() => saveRow(row)} disabled={savingId === row.id} icon={savingId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}>
+                Save
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => deleteRow(row.id)} disabled={savingId === row.id} icon={<Trash2 size={14} />}>
+                Delete
+              </Button>
+            </div>
           </div>
+          {errors[row.id] && <p className="mt-2 text-xs font-medium text-red-500">{errors[row.id]}</p>}
         </div>
       ))}
       <Button variant="secondary" size="sm" onClick={addRow} disabled={creating} icon={<Plus size={14} />}>

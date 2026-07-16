@@ -3,7 +3,7 @@ import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { CountUp } from "@/components/ui/CountUp";
 import { useAdminAuth } from "@/lib/adminAuth";
-import { api } from "@/lib/api";
+import { api, describeApiError } from "@/lib/api";
 import type { StatItemRow } from "@/types/content";
 
 export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; index: number; onSaved: () => Promise<unknown> }) {
@@ -11,6 +11,7 @@ export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; inde
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(stat);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!editMode) {
     return (
@@ -53,6 +54,7 @@ export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; inde
 
   const save = async () => {
     setSaving(true);
+    setError(null);
     try {
       if (draft.id < 0) {
         await api.post("/api/admin/stats", { label: draft.label, value: draft.value, prefix: draft.prefix, suffix: draft.suffix, sortOrder: draft.sortOrder });
@@ -60,20 +62,25 @@ export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; inde
         await api.put("/api/admin/stats", draft);
       }
       await onSaved();
-      setEditing(false);
-    } finally {
       setSaving(false);
+      setEditing(false);
+    } catch (err) {
+      setSaving(false);
+      setError(describeApiError(err));
     }
   };
 
   const remove = async () => {
     setSaving(true);
+    setError(null);
     try {
       if (draft.id >= 0) await api.delete("/api/admin/stats", { id: draft.id });
       await onSaved();
-      setEditing(false);
-    } finally {
       setSaving(false);
+      setEditing(false);
+    } catch (err) {
+      setSaving(false);
+      setError(describeApiError(err));
     }
   };
 
@@ -103,6 +110,7 @@ export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; inde
           <Trash2 size={13} />
         </button>
       </div>
+      {error && <p className="mt-2 text-xs font-medium text-red-500">{error}</p>}
     </div>
   );
 }
@@ -110,27 +118,34 @@ export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; inde
 export function AddStatButton({ nextOrder, onSaved }: { nextOrder: number; onSaved: () => Promise<unknown> }) {
   const { editMode } = useAdminAuth();
   const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!editMode) return null;
 
   const add = async () => {
     setAdding(true);
+    setError(null);
     try {
       await api.post("/api/admin/stats", { label: "New Stat", value: 0, prefix: "", suffix: "", sortOrder: nextOrder });
       await onSaved();
+    } catch (err) {
+      setError(describeApiError(err));
     } finally {
       setAdding(false);
     }
   };
 
   return (
-    <button
-      onClick={add}
-      disabled={adding}
-      className="flex min-h-[72px] items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-olive-300 text-sm font-medium text-olive-600 hover:bg-olive-50/60 dark:border-olive-700 dark:text-olive-400 dark:hover:bg-olive-500/10"
-    >
-      {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-      Add Stat
-    </button>
+    <div className="flex min-h-[72px] flex-col justify-center gap-1.5">
+      <button
+        onClick={add}
+        disabled={adding}
+        className="flex min-h-[72px] items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-olive-300 text-sm font-medium text-olive-600 hover:bg-olive-50/60 dark:border-olive-700 dark:text-olive-400 dark:hover:bg-olive-500/10"
+      >
+        {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+        Add Stat
+      </button>
+      {error && <p className="text-center text-xs font-medium text-red-500">{error}</p>}
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, describeApiError } from "@/lib/api";
 import { formatPHP } from "@/lib/formatters";
 import type { LeadStatus } from "@/types/estimate";
 import { Card } from "@/components/ui/Card";
@@ -35,14 +35,15 @@ export function LeadsTab() {
   const [leads, setLeads] = useState<LeadRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [statusErrors, setStatusErrors] = useState<Record<number, string>>({});
 
   const load = async () => {
     setError(null);
     try {
       const rows = await api.get<LeadRow[]>("/api/leads");
       setLeads(rows);
-    } catch {
-      setError("Could not load leads.");
+    } catch (err) {
+      setError(describeApiError(err));
     }
   };
 
@@ -52,9 +53,12 @@ export function LeadsTab() {
 
   const updateStatus = async (id: number, status: LeadStatus) => {
     setUpdatingId(id);
+    setStatusErrors((e) => ({ ...e, [id]: "" }));
     try {
       await api.patch("/api/leads", { id, status });
       setLeads((rows) => rows?.map((r) => (r.id === id ? { ...r, status } : r)) ?? null);
+    } catch (err) {
+      setStatusErrors((e) => ({ ...e, [id]: describeApiError(err) }));
     } finally {
       setUpdatingId(null);
     }
@@ -120,6 +124,7 @@ export function LeadsTab() {
                         </select>
                       )}
                     </div>
+                    {statusErrors[lead.id] && <p className="mt-1 text-xs font-medium text-red-500">{statusErrors[lead.id]}</p>}
                   </td>
                 </tr>
               ))}
