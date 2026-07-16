@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import type { QualityStandard } from "@/types/estimate";
-import { QUALITY_MULTIPLIER } from "@/data/costRates";
 import { useWizardStore } from "@/store/wizardStore";
+import { useSiteData } from "@/lib/useSiteData";
+import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
 import { cn } from "@/lib/cn";
 
 const TIERS: { value: QualityStandard; desc: string; specs: string[] }[] = [
@@ -15,6 +16,8 @@ const TIERS: { value: QualityStandard; desc: string; specs: string[] }[] = [
 
 export function Step5Quality() {
   const { selections, setQuality } = useWizardStore();
+  const { data } = useSiteData();
+  const qualityMultiplier = data.settings["estimator.qualityMultipliers"] ?? DEFAULT_SITE_DATA.settings["estimator.qualityMultipliers"]!;
 
   return (
     <div>
@@ -59,7 +62,7 @@ export function Step5Quality() {
                 </div>
               </div>
               <span className="shrink-0 self-end text-sm font-semibold text-ink-400 sm:self-center">
-                {QUALITY_MULTIPLIER[tier.value].toFixed(2)}&times; base rate
+                {(qualityMultiplier[tier.value] ?? 1).toFixed(2)}&times; base rate
               </span>
             </motion.button>
           );
