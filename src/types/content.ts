@@ -44,6 +44,17 @@ export interface FeeTier {
   rate: number;
 }
 
+export interface PhaseItem {
+  label: string;
+  pct: number;
+}
+
+export interface TextCard {
+  key: string;
+  title: string;
+  desc: string;
+}
+
 export interface EstimatorSettings {
   categoryRates: Record<string, number>;
   qualityMultipliers: Record<string, number>;
@@ -74,6 +85,14 @@ export interface SiteSettings {
   "estimator.floorsCostAdderPerLevel"?: number;
   "estimator.qualityTimelineFactors"?: Record<string, number>;
   "estimator.projectTypeTimelineFactors"?: Record<string, number>;
+  "estimator.constructionPhases"?: PhaseItem[];
+  "estimator.timelinePhases.default"?: PhaseItem[];
+  "estimator.timelinePhases.designOnly"?: PhaseItem[];
+  "estimator.timelinePhases.interiorFitout"?: PhaseItem[];
+  "landing.estimateGrid"?: TextCard[];
+  "landing.howItWorks"?: TextCard[];
+  "landing.finalCta.heading"?: string;
+  "landing.finalCta.subtext"?: string;
   [key: string]: unknown;
 }
 

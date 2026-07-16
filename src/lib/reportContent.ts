@@ -44,13 +44,3 @@ export function buildAiNotes(s: WizardSelections, e: EstimateResult): string {
   return parts.join(" ");
 }
 
-export function buildConstructionPhases(): { label: string; pct: number }[] {
-  return [
-    { label: "Pre-construction & Permitting", pct: 10 },
-    { label: "Foundation & Substructure", pct: 15 },
-    { label: "Structural Frame", pct: 25 },
-    { label: "Enclosure (Roof, Walls, Windows)", pct: 20 },
-    { label: "MEP Installation", pct: 15 },
-    { label: "Finishes & Turnover", pct: 15 },
-  ];
-}

@@ -2,10 +2,84 @@ import { useEffect, useState } from "react";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
-import type { FeeTier, ProvinceRow, ServiceRow } from "@/types/content";
+import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
+import type { FeeTier, PhaseItem, ProvinceRow, ServiceRow } from "@/types/content";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TextField, NumberField } from "@/components/admin/AdminField";
+
+function PhaseListEditor({
+  title,
+  description,
+  settingsKey,
+  phases,
+  onSaved,
+}: {
+  title: string;
+  description: string;
+  settingsKey: string;
+  phases: PhaseItem[];
+  onSaved: () => Promise<unknown>;
+}) {
+  const [rows, setRows] = useState(phases);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => setRows(phases), [phases]);
+
+  const total = rows.reduce((sum, r) => sum + (Number(r.pct) || 0), 0);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put("/api/admin/settings", { key: settingsKey, value: rows });
+      await onSaved();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="p-6 sm:p-8">
+      <h3 className="text-base font-semibold text-ink-900 dark:text-white">{title}</h3>
+      <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">{description}</p>
+      <div className="mt-4 space-y-2">
+        {rows.map((phase, i) => (
+          <div key={i} className="grid grid-cols-[1fr_auto_auto] items-end gap-3">
+            <TextField
+              label="Phase Name"
+              value={phase.label}
+              onChange={(v) => setRows((r) => r.map((p, idx) => (idx === i ? { ...p, label: v } : p)))}
+            />
+            <NumberField
+              label="% of Timeline"
+              value={phase.pct}
+              onChange={(v) => setRows((r) => r.map((p, idx) => (idx === i ? { ...p, pct: v } : p)))}
+              className="w-28"
+            />
+            <Button size="sm" variant="outline" onClick={() => setRows((r) => r.filter((_, idx) => idx !== i))} icon={<Trash2 size={14} />} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between">
+        <span className={`text-xs font-medium ${Math.round(total) === 100 ? "text-emerald-600" : "text-amber-600"}`}>
+          Total: {Math.round(total)}% {Math.round(total) !== 100 && "(should add up to 100%)"}
+        </span>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Button size="sm" variant="secondary" onClick={() => setRows((r) => [...r, { label: "New Phase", pct: 0 }])} icon={<Plus size={14} />}>
+          Add Phase
+        </Button>
+        <Button size="sm" onClick={save} disabled={saving} icon={saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}>
+          Save
+        </Button>
+        {saved && <span className="text-sm text-emerald-600">Saved</span>}
+      </div>
+    </Card>
+  );
+}
 
 function RecordMapEditor({
   title,
@@ -333,6 +407,34 @@ export function EstimatorTab() {
         description="Multiplies the base project timeline depending on project type."
         settingsKey="estimator.projectTypeTimelineFactors"
         values={(s["estimator.projectTypeTimelineFactors"] as Record<string, number>) ?? {}}
+        onSaved={refetch}
+      />
+      <PhaseListEditor
+        title="Construction Phases (shown in the summary report)"
+        description="The phase-by-phase percentage breakdown shown on every client's report, regardless of project type."
+        settingsKey="estimator.constructionPhases"
+        phases={(s["estimator.constructionPhases"] as PhaseItem[]) ?? DEFAULT_SITE_DATA.settings["estimator.constructionPhases"]!}
+        onSaved={refetch}
+      />
+      <PhaseListEditor
+        title="Project Timeline Breakdown — New Construction & Similar"
+        description="Used for New Construction, Renovation, Extension, and Design & Build projects."
+        settingsKey="estimator.timelinePhases.default"
+        phases={(s["estimator.timelinePhases.default"] as PhaseItem[]) ?? DEFAULT_SITE_DATA.settings["estimator.timelinePhases.default"]!}
+        onSaved={refetch}
+      />
+      <PhaseListEditor
+        title="Project Timeline Breakdown — Design Only"
+        description="Used only when the client selects Design Only as their project type."
+        settingsKey="estimator.timelinePhases.designOnly"
+        phases={(s["estimator.timelinePhases.designOnly"] as PhaseItem[]) ?? DEFAULT_SITE_DATA.settings["estimator.timelinePhases.designOnly"]!}
+        onSaved={refetch}
+      />
+      <PhaseListEditor
+        title="Project Timeline Breakdown — Interior Fit-out"
+        description="Used only when the client selects Interior Fit-out as their project type."
+        settingsKey="estimator.timelinePhases.interiorFitout"
+        phases={(s["estimator.timelinePhases.interiorFitout"] as PhaseItem[]) ?? DEFAULT_SITE_DATA.settings["estimator.timelinePhases.interiorFitout"]!}
         onSaved={refetch}
       />
       <ProvincesEditor provinces={data.provinces} onSaved={refetch} />

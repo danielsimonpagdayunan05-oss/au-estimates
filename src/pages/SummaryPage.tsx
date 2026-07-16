@@ -20,9 +20,10 @@ import {
 import { useWizardStore } from "@/store/wizardStore";
 import { calculateEstimate } from "@/lib/calculations";
 import { formatMonths, formatNumber, formatPHP } from "@/lib/formatters";
-import { buildAiNotes, buildConstructionPhases, buildDeliverables, buildMaintenanceTips } from "@/lib/reportContent";
+import { buildAiNotes, buildDeliverables, buildMaintenanceTips } from "@/lib/reportContent";
 import { calculateRoi } from "@/lib/roi";
 import { useSiteData } from "@/lib/useSiteData";
+import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -62,7 +63,14 @@ export function SummaryPage() {
   const deliverables = buildDeliverables(selections, siteData.services);
   const maintenanceTips = buildMaintenanceTips(selections);
   const aiNotes = buildAiNotes(selections, estimate);
-  const constructionPhases = buildConstructionPhases();
+  const constructionPhases = siteData.settings["estimator.constructionPhases"] ?? DEFAULT_SITE_DATA.settings["estimator.constructionPhases"]!;
+  const timelinePhaseKey: "estimator.timelinePhases.designOnly" | "estimator.timelinePhases.interiorFitout" | "estimator.timelinePhases.default" =
+    selections.projectType === "Design Only"
+      ? "estimator.timelinePhases.designOnly"
+      : selections.projectType === "Interior Fit-out"
+        ? "estimator.timelinePhases.interiorFitout"
+        : "estimator.timelinePhases.default";
+  const timelinePhases = siteData.settings[timelinePhaseKey] ?? DEFAULT_SITE_DATA.settings[timelinePhaseKey]!;
   const roi = calculateRoi(selections.category, selections.floorArea, estimate.totalInvestment);
   const reportId = `AU-${Date.now().toString(36).toUpperCase().slice(-8)}`;
 
@@ -124,7 +132,7 @@ export function SummaryPage() {
           Estimated {formatMonths(estimate.timelineMonths)} from design to turnover.
         </p>
         <div className="mt-6">
-          <TimelinePhases projectType={selections.projectType} months={estimate.timelineMonths} />
+          <TimelinePhases phases={timelinePhases} months={estimate.timelineMonths} />
         </div>
       </Card>
 

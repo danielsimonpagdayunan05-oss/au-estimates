@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
+import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
 import type { StatItemRow } from "@/types/content";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -74,6 +75,18 @@ export function ContentTab() {
       </Card>
 
       <Card className="p-6 sm:p-8">
+        <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Hero Sample Figures</h2>
+        <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">
+          The three floating example cards next to the headline (Estimated Investment, Timeline, Risk Score) — illustrative numbers, not live data. Also click-to-edit on the page itself.
+        </p>
+        {isLoading ? (
+          <Loader2 size={20} className="mt-4 animate-spin text-olive-500" />
+        ) : (
+          <HeroSampleEditor sample={data.settings["hero.sampleEstimate"] ?? DEFAULT_SITE_DATA.settings["hero.sampleEstimate"]!} onChanged={refetch} />
+        )}
+      </Card>
+
+      <Card className="p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-ink-900 dark:text-white">Landing Page Stats</h2>
         <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">The animated numbers shown on the homepage.</p>
         {isLoading ? (
@@ -82,6 +95,49 @@ export function ContentTab() {
           <StatsEditor stats={data.stats} onChanged={refetch} />
         )}
       </Card>
+    </div>
+  );
+}
+
+function HeroSampleEditor({
+  sample,
+  onChanged,
+}: {
+  sample: { investment: number; timelineMonths: number; riskLabel: string; riskPct: number };
+  onChanged: () => Promise<unknown>;
+}) {
+  const [draft, setDraft] = useState(sample);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => setDraft(sample), [sample]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put("/api/admin/settings", { key: "hero.sampleEstimate", value: draft });
+      await onChanged();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <NumberField label="Investment (PHP)" value={draft.investment} onChange={(v) => setDraft((d) => ({ ...d, investment: v }))} />
+        <NumberField label="Timeline (months)" value={draft.timelineMonths} onChange={(v) => setDraft((d) => ({ ...d, timelineMonths: v }))} />
+        <TextField label="Risk Label" value={draft.riskLabel} onChange={(v) => setDraft((d) => ({ ...d, riskLabel: v }))} />
+        <NumberField label="Risk %" value={draft.riskPct} onChange={(v) => setDraft((d) => ({ ...d, riskPct: v }))} />
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Button size="sm" onClick={save} disabled={saving} icon={saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}>
+          Save
+        </Button>
+        {saved && <span className="text-sm text-emerald-600">Saved</span>}
+      </div>
     </div>
   );
 }

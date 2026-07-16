@@ -4,9 +4,10 @@ import { ArrowRight, CalendarClock, Sparkles, TrendingUp, ShieldCheck } from "lu
 import { Button } from "@/components/ui/Button";
 import { GlassCard } from "@/components/ui/Card";
 import { EditableText } from "@/components/admin/EditableText";
+import { EditableNumber } from "@/components/admin/EditableNumber";
 import { useSiteData } from "@/lib/useSiteData";
 import { api } from "@/lib/api";
-import { formatPHP } from "@/lib/formatters";
+import { formatPHP, formatNumber } from "@/lib/formatters";
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -27,6 +28,10 @@ export function Hero() {
   const saveSetting = async (key: string, value: unknown) => {
     await api.put("/api/admin/settings", { key, value });
     await refetch();
+  };
+
+  const saveSampleField = (field: keyof typeof sample) => async (value: string | number) => {
+    await saveSetting("hero.sampleEstimate", { ...sample, [field]: value });
   };
 
   return (
@@ -134,7 +139,9 @@ export function Hero() {
           <motion.div className="absolute -left-6 top-8 sm:-left-10" animate={{ y: [0, -12, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}>
             <GlassCard className="w-52 p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Estimated Investment</p>
-              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">{formatPHP(sample.investment)}</p>
+              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">
+                <EditableNumber value={sample.investment} format={formatPHP} onSave={saveSampleField("investment")} />
+              </p>
               <div className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-600">
                 <TrendingUp size={13} /> Mid-Market tier
               </div>
@@ -148,7 +155,9 @@ export function Hero() {
           >
             <GlassCard className="w-48 p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Timeline</p>
-              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">{sample.timelineMonths} months</p>
+              <p className="mt-1 font-display text-xl font-semibold text-ink-900 dark:text-white">
+                <EditableNumber value={sample.timelineMonths} format={(v) => `${v} months`} onSave={saveSampleField("timelineMonths")} />
+              </p>
               <div className="mt-2 flex items-center gap-1 text-xs font-medium text-olive-600">
                 <CalendarClock size={13} /> Design to turnover
               </div>
@@ -164,10 +173,15 @@ export function Hero() {
               <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Risk Score</p>
               <div className="mt-1.5 flex items-center gap-2">
                 <div className="h-1.5 flex-1 rounded-full bg-ink-100 dark:bg-white/10">
-                  <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${sample.riskPct}%` }} />
+                  <div className="h-1.5 rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Math.max(0, sample.riskPct))}%` }} />
                 </div>
-                <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                  <ShieldCheck size={13} /> {sample.riskLabel}
+                <span className="flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-emerald-600">
+                  <ShieldCheck size={13} /> <EditableText as="span" value={sample.riskLabel} onSave={saveSampleField("riskLabel")} />
+                </span>
+              </div>
+              <div className="mt-1.5 flex justify-end">
+                <span className="text-[10px] text-ink-400">
+                  (<EditableNumber value={sample.riskPct} format={formatNumber} onSave={saveSampleField("riskPct")} className="text-[10px]" />%)
                 </span>
               </div>
             </GlassCard>
