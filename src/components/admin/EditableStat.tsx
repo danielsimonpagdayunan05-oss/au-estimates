@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { CountUp } from "@/components/ui/CountUp";
@@ -10,8 +10,11 @@ export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; inde
   const { editMode } = useAdminAuth();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(stat);
+  const [valueText, setValueText] = useState(String(stat.value));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setValueText(String(draft.value)), [draft.value]);
 
   if (!editMode) {
     return (
@@ -90,7 +93,19 @@ export function EditableStat({ stat, index, onSaved }: { stat: StatItemRow; inde
     <div className="rounded-xl border-2 border-olive-500 bg-white p-3 text-left dark:bg-ink-900">
       <div className="grid grid-cols-3 gap-1.5">
         <input className={inputClass} placeholder="Prefix" value={draft.prefix} onChange={(e) => setDraft((d) => ({ ...d, prefix: e.target.value }))} />
-        <input className={inputClass} type="number" placeholder="Value" value={draft.value} onChange={(e) => setDraft((d) => ({ ...d, value: Number(e.target.value) }))} />
+        <input
+          className={inputClass}
+          type="number"
+          placeholder="Value"
+          value={valueText}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setValueText(raw);
+            if (raw.trim() === "") return;
+            const parsed = Number(raw);
+            if (!Number.isNaN(parsed)) setDraft((d) => ({ ...d, value: parsed }));
+          }}
+        />
         <input className={inputClass} placeholder="Suffix" value={draft.suffix} onChange={(e) => setDraft((d) => ({ ...d, suffix: e.target.value }))} />
       </div>
       <input
