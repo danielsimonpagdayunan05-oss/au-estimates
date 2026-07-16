@@ -3,7 +3,7 @@ import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { api, describeApiError } from "@/lib/api";
 import { useSiteData } from "@/lib/useSiteData";
 import { DEFAULT_SITE_DATA } from "@/lib/defaultSiteData";
-import type { FeeTier, PhaseItem, ProvinceRow, ServiceRow } from "@/types/content";
+import type { FeeTier, PhaseItem, PricingRuleRow, ProvinceRow, ServiceRow } from "@/types/content";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TextField, NumberField } from "@/components/admin/AdminField";
@@ -385,6 +385,188 @@ function ServicesEditor({ services, onSaved }: { services: ServiceRow[]; onSaved
   );
 }
 
+const CONDITION_FIELD_OPTIONS = [
+  { value: "projectType", label: "Project Type" },
+  { value: "category", label: "Category" },
+  { value: "quality", label: "Quality Standard" },
+  { value: "mepComplexity", label: "MEP Complexity" },
+] as const;
+
+const CONDITION_VALUE_OPTIONS: Record<string, string[]> = {
+  projectType: ["New Construction", "Renovation", "Extension", "Interior Fit-out", "Design Only", "Design & Build"],
+  category: ["Residential", "Commercial", "Office", "Industrial", "Institutional", "Hospital", "Warehouse", "Mixed-use", "Subdivision", "Others"],
+  quality: ["Basic", "Standard", "Premium", "Luxury", "Ultra Luxury"],
+  mepComplexity: ["Simple", "Standard", "Advanced", "Mission-Critical"],
+};
+
+const ACTION_TARGET_OPTIONS = [
+  { value: "architecturalFee", label: "Architectural Design Fee" },
+  { value: "engineeringFee", label: "Engineering Design Fee" },
+  { value: "interiorFee", label: "Interior Design Fee" },
+  { value: "constructionCost", label: "Construction Cost" },
+] as const;
+
+function PricingRulesEditor({ rules, onSaved }: { rules: PricingRuleRow[]; onSaved: () => Promise<unknown> }) {
+  const [rows, setRows] = useState(rules);
+  const [savingId, setSavingId] = useState<number | null>(null);
+  const [errors, setErrors] = useState<Record<number, string>>({});
+
+  useEffect(() => setRows(rules), [rules]);
+
+  const update = (id: number, patch: Partial<PricingRuleRow>) => setRows((r) => r.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+
+  const save = async (row: PricingRuleRow) => {
+    setSavingId(row.id);
+    setErrors((e) => ({ ...e, [row.id]: "" }));
+    try {
+      if (row.id < 0) {
+        await api.post("/api/admin/pricing-rules", {
+          label: row.label,
+          conditionField: row.conditionField,
+          conditionValue: row.conditionValue,
+          actionTarget: row.actionTarget,
+          actionType: row.actionType,
+          actionValue: row.actionValue,
+          enabled: row.enabled,
+          sortOrder: row.sortOrder,
+        });
+      } else {
+        await api.put("/api/admin/pricing-rules", row);
+      }
+      await onSaved();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [row.id]: describeApiError(err) }));
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const remove = async (id: number) => {
+    if (id < 0) return setRows((r) => r.filter((row) => row.id !== id));
+    setSavingId(id);
+    setErrors((e) => ({ ...e, [id]: "" }));
+    try {
+      await api.delete("/api/admin/pricing-rules", { id });
+      await onSaved();
+    } catch (err) {
+      setErrors((e) => ({ ...e, [id]: describeApiError(err) }));
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const selectClass = "w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-900 outline-none dark:border-white/10 dark:bg-ink-900 dark:text-white";
+
+  return (
+    <Card className="p-6 sm:p-8">
+      <h3 className="text-base font-semibold text-ink-900 dark:text-white">Special Pricing Rules</h3>
+      <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">
+        Automatic promos and exceptions — e.g. "Design & Build projects get a free Architectural Design Fee." Each rule applies whenever a client's
+        selection matches the condition, and shows up clearly on their estimate and PDF report.
+      </p>
+      <div className="mt-4 space-y-3">
+        {rows.map((row) => (
+          <div key={row.id} className="rounded-xl border border-ink-100 p-4 dark:border-white/[0.06]">
+            <TextField label="Rule Name (shown to the client)" value={row.label} onChange={(v) => update(row.id, { label: v })} />
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">If</span>
+                <select
+                  value={row.conditionField}
+                  onChange={(e) => {
+                    const conditionField = e.target.value as PricingRuleRow["conditionField"];
+                    update(row.id, { conditionField, conditionValue: CONDITION_VALUE_OPTIONS[conditionField][0] });
+                  }}
+                  className={selectClass}
+                >
+                  {CONDITION_FIELD_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">equals</span>
+                <select value={row.conditionValue} onChange={(e) => update(row.id, { conditionValue: e.target.value })} className={selectClass}>
+                  {CONDITION_VALUE_OPTIONS[row.conditionField].map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">Then</span>
+                <select
+                  value={row.actionTarget}
+                  onChange={(e) => update(row.id, { actionTarget: e.target.value as PricingRuleRow["actionTarget"] })}
+                  className={selectClass}
+                >
+                  {ACTION_TARGET_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-ink-500 dark:text-ink-400">Action</span>
+                <select
+                  value={row.actionType}
+                  onChange={(e) => update(row.id, { actionType: e.target.value as PricingRuleRow["actionType"] })}
+                  className={selectClass}
+                >
+                  <option value="waive">Waive completely (free)</option>
+                  <option value="percentDiscount">Percentage discount</option>
+                </select>
+              </label>
+            </div>
+            {row.actionType === "percentDiscount" && (
+              <div className="mt-3 w-40">
+                <NumberField label="Discount %" value={row.actionValue} onChange={(v) => update(row.id, { actionValue: v })} />
+              </div>
+            )}
+            <div className="mt-3 flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm font-medium text-ink-700 dark:text-ink-200">
+                <input type="checkbox" checked={row.enabled} onChange={(e) => update(row.id, { enabled: e.target.checked })} className="h-4 w-4 rounded accent-olive-600" />
+                Enabled
+              </label>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => save(row)} disabled={savingId === row.id} icon={savingId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}>
+                  Save
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => remove(row.id)} disabled={savingId === row.id} icon={<Trash2 size={14} />}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+            {errors[row.id] && <p className="mt-2 text-xs font-medium text-red-500">{errors[row.id]}</p>}
+          </div>
+        ))}
+      </div>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="mt-4"
+        onClick={() =>
+          setRows((r) => [
+            ...r,
+            {
+              id: -Date.now(),
+              label: "New Pricing Rule",
+              conditionField: "projectType",
+              conditionValue: CONDITION_VALUE_OPTIONS.projectType[0],
+              actionTarget: "architecturalFee",
+              actionType: "waive",
+              actionValue: 0,
+              enabled: true,
+              sortOrder: r.length,
+            },
+          ])
+        }
+        icon={<Plus size={14} />}
+      >
+        Add Rule
+      </Button>
+    </Card>
+  );
+}
+
 export function EstimatorTab() {
   const { data, isLoading, refetch } = useSiteData();
   const s = data.settings;
@@ -474,6 +656,7 @@ export function EstimatorTab() {
       />
       <ProvincesEditor provinces={data.provinces} onSaved={refetch} />
       <ServicesEditor services={data.services} onSaved={refetch} />
+      <PricingRulesEditor rules={data.pricingRules} onSaved={refetch} />
     </div>
   );
 }

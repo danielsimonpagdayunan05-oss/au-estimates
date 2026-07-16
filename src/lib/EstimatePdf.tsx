@@ -13,6 +13,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
   label: { color: "#6f6857" },
   value: { fontWeight: 700 },
+  noteText: { color: "#3f6b5e", fontSize: 8 },
+  freeValue: { fontWeight: 700, color: "#3f6b5e" },
   grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
   gridItem: { width: "50%", paddingHorizontal: 6, marginBottom: 10 },
   statBox: { backgroundColor: "#f7f6f1", borderRadius: 8, padding: 10 },
@@ -119,8 +121,11 @@ export function EstimatePdf({ selections, estimate, client, reportId, qrDataUrl,
         <Text style={styles.sectionTitle}>Professional Fee Breakdown</Text>
         {estimate.professionalFees.map((f) => (
           <View style={styles.row} key={f.label}>
-            <Text style={styles.label}>{f.label}</Text>
-            <Text style={styles.value}>{formatPHP(f.amount)}</Text>
+            <Text style={styles.label}>
+              {f.label}
+              {f.note ? <Text style={styles.noteText}> — {f.note}</Text> : null}
+            </Text>
+            <Text style={f.amount === 0 && f.note ? styles.freeValue : styles.value}>{f.amount === 0 && f.note ? "FREE" : formatPHP(f.amount)}</Text>
           </View>
         ))}
 

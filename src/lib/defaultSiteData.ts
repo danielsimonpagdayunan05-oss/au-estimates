@@ -99,4 +99,5 @@ export const DEFAULT_SITE_DATA: SiteDataResponse = {
   provinces: PROVINCES.map((p, i) => ({ id: -(i + 1), name: p.name, region: p.region, multiplier: p.multiplier, cities: p.cities, sortOrder: i })),
   services: ADDITIONAL_SERVICES.map((s, i) => ({ id: s.id, label: s.label, category: s.category, feeType: s.feeType, value: s.value, sortOrder: i })),
   portfolio: [],
+  pricingRules: [],
 };

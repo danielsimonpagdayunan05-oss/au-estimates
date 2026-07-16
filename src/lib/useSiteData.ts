@@ -35,6 +35,7 @@ function preserveUnchangedReferences(previous: SiteDataResponse | null, next: Si
     provinces: sameContent(previous.provinces, next.provinces) ? previous.provinces : next.provinces,
     services: sameContent(previous.services, next.services) ? previous.services : next.services,
     portfolio: sameContent(previous.portfolio, next.portfolio) ? previous.portfolio : next.portfolio,
+    pricingRules: sameContent(previous.pricingRules, next.pricingRules) ? previous.pricingRules : next.pricingRules,
   };
 }
 

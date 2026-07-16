@@ -82,6 +82,7 @@ export interface WizardSelections {
 export interface CostBreakdownItem {
   label: string;
   amount: number;
+  note?: string;
 }
 
 export interface EstimateResult {
@@ -100,5 +101,6 @@ export interface EstimateResult {
   budgetCategory: "Economy" | "Mid-Market" | "Premium" | "Luxury";
   sustainabilityScore: number;
   carbonFootprintTons: number;
+  appliedRules: string[];
   recommendations: string[];
 }

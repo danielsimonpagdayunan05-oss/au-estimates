@@ -8,16 +8,18 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const COLORS = ["#7a8a49", "#c7a94f", "#b5652f", "#3f6b5e", "#8a5a6b", "#b3bd85", "#6b5335", "#e5d8a4"];
 
 export function CostBreakdownChart({ estimate }: { estimate: EstimateResult }) {
-  const segments = [
-    { label: "Construction Cost", value: estimate.constructionCost },
-    ...estimate.professionalFees.map((f) => ({ label: f.label, value: f.amount })),
-  ].filter((s) => s.value > 0);
+  const allSegments = [
+    { label: "Construction Cost", value: estimate.constructionCost, note: undefined as string | undefined },
+    ...estimate.professionalFees.map((f) => ({ label: f.label, value: f.amount, note: f.note })),
+  ];
+  const chartSegments = allSegments.filter((s) => s.value > 0);
+  const legendSegments = allSegments.filter((s) => s.value > 0 || s.note);
 
   const data = {
-    labels: segments.map((s) => s.label),
+    labels: chartSegments.map((s) => s.label),
     datasets: [
       {
-        data: segments.map((s) => s.value),
+        data: chartSegments.map((s) => s.value),
         backgroundColor: COLORS,
         borderWidth: 0,
         hoverOffset: 6,
@@ -43,15 +45,25 @@ export function CostBreakdownChart({ estimate }: { estimate: EstimateResult }) {
         </div>
       </div>
       <div className="w-full space-y-2.5">
-        {segments.map((s, i) => (
-          <div key={s.label} className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-2 text-ink-600 dark:text-ink-300">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-              {s.label}
-            </span>
-            <span className="font-semibold text-ink-900 dark:text-white">{formatPHP(s.value, { compact: true })}</span>
-          </div>
-        ))}
+        {legendSegments.map((s) => {
+          const chartIndex = chartSegments.indexOf(s);
+          const isFree = s.value === 0 && s.note;
+          return (
+            <div key={s.label} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-ink-600 dark:text-ink-300">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: isFree ? "#10b981" : COLORS[chartIndex % COLORS.length] }}
+                />
+                {s.label}
+                {s.note && <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">— {s.note}</span>}
+              </span>
+              <span className={isFree ? "font-semibold text-emerald-600 dark:text-emerald-400" : "font-semibold text-ink-900 dark:text-white"}>
+                {isFree ? "FREE" : formatPHP(s.value, { compact: true })}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { SERVICE_CATEGORY_LABELS } from "@/data/services";
 import type { AdditionalService, CostBreakdownItem, EstimateResult, WizardSelections } from "@/types/estimate";
-import type { ServiceRow, SiteDataResponse } from "@/types/content";
+import type { PricingRuleRow, ServiceRow, SiteDataResponse } from "@/types/content";
 import { buildRecommendations } from "@/lib/recommendations";
 
 const MEP_RISK: Record<string, number> = { Simple: 0, Standard: 5, Advanced: 12, "Mission-Critical": 20 };
@@ -26,6 +26,31 @@ function serviceCost(service: ServiceRow, floorArea: number, feeBasis: number) {
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+
+function ruleMatches(rule: PricingRuleRow, s: WizardSelections): boolean {
+  switch (rule.conditionField) {
+    case "projectType":
+      return s.projectType === rule.conditionValue;
+    case "category":
+      return s.category === rule.conditionValue;
+    case "quality":
+      return s.quality === rule.conditionValue;
+    case "mepComplexity":
+      return s.building.mepComplexity === rule.conditionValue;
+    default:
+      return false;
+  }
+}
+
+function applyRules(amount: number, target: string, rules: PricingRuleRow[], s: WizardSelections, appliedLabels: string[]) {
+  let result = amount;
+  for (const rule of rules) {
+    if (!rule.enabled || rule.actionTarget !== target || !ruleMatches(rule, s)) continue;
+    result = rule.actionType === "waive" ? 0 : result * (1 - rule.actionValue / 100);
+    appliedLabels.push(rule.label);
+  }
+  return result;
+}
 
 export function calculateEstimate(s: WizardSelections, siteData: SiteDataResponse): EstimateResult | null {
   if (!s.category || !s.projectType || !s.quality || !s.floorArea) return null;
@@ -56,14 +81,27 @@ export function calculateEstimate(s: WizardSelections, siteData: SiteDataRespons
   const isInteriorFitout = s.projectType === "Interior Fit-out";
   const typeMultiplier = projectTypeMultipliers[s.projectType] ?? 1;
 
-  const constructionCost = isDesignOnly ? 0 : referenceCost * typeMultiplier;
-  const constructionCostPerSqm = isDesignOnly ? 0 : referenceCostPerSqm * typeMultiplier;
-  const feeBasis = isDesignOnly ? referenceCost : constructionCost;
+  const feeBasis = isDesignOnly ? referenceCost : referenceCost * typeMultiplier;
 
   const designApplicable = !isInteriorFitout;
-  const architecturalFee = designApplicable ? feeBasis * getArchitecturalRate(feeBasis, architecturalFeeTiers) : 0;
-  const engineeringFee = designApplicable ? feeBasis * engineeringFeeRate : 0;
-  const interiorFee = isInteriorFitout ? feeBasis * interiorFeeRate : 0;
+  const rawArchitecturalFee = designApplicable ? feeBasis * getArchitecturalRate(feeBasis, architecturalFeeTiers) : 0;
+  const rawEngineeringFee = designApplicable ? feeBasis * engineeringFeeRate : 0;
+  const rawInteriorFee = isInteriorFitout ? feeBasis * interiorFeeRate : 0;
+  const rawConstructionCost = isDesignOnly ? 0 : referenceCost * typeMultiplier;
+
+  const activeRules = (siteData.pricingRules ?? []).filter((r) => r.enabled);
+  const appliedRuleLabels: string[] = [];
+  const architecturalNotes: string[] = [];
+  const engineeringNotes: string[] = [];
+  const interiorNotes: string[] = [];
+
+  const architecturalFee = applyRules(rawArchitecturalFee, "architecturalFee", activeRules, s, architecturalNotes);
+  const engineeringFee = applyRules(rawEngineeringFee, "engineeringFee", activeRules, s, engineeringNotes);
+  const interiorFee = applyRules(rawInteriorFee, "interiorFee", activeRules, s, interiorNotes);
+  const constructionCostNotes: string[] = [];
+  const constructionCost = applyRules(rawConstructionCost, "constructionCost", activeRules, s, constructionCostNotes);
+  const constructionCostPerSqm = rawConstructionCost > 0 ? (isDesignOnly ? 0 : referenceCostPerSqm * typeMultiplier) * (constructionCost / rawConstructionCost) : 0;
+  appliedRuleLabels.push(...architecturalNotes, ...engineeringNotes, ...interiorNotes, ...constructionCostNotes);
 
   const categoryTotals: Record<string, number> = {};
   let additionalServicesCost = 0;
@@ -75,15 +113,16 @@ export function calculateEstimate(s: WizardSelections, siteData: SiteDataRespons
     categoryTotals[svc.category] = (categoryTotals[svc.category] ?? 0) + cost;
   }
 
-  const professionalFees: CostBreakdownItem[] = [
-    { label: "Architectural Design Fee", amount: architecturalFee },
-    { label: "Engineering Design Fee", amount: engineeringFee },
-    { label: "Interior Design Fee", amount: interiorFee },
+  const rawProfessionalFees: CostBreakdownItem[] = [
+    { label: "Architectural Design Fee", amount: architecturalFee, note: architecturalNotes[0] },
+    { label: "Engineering Design Fee", amount: engineeringFee, note: engineeringNotes[0] },
+    { label: "Interior Design Fee", amount: interiorFee, note: interiorNotes[0] },
     ...Object.entries(categoryTotals).map(([cat, amount]) => ({
       label: `${SERVICE_CATEGORY_LABELS[cat as AdditionalService["category"]]} (Add-ons)`,
       amount,
     })),
-  ].filter((item) => item.amount > 0);
+  ];
+  const professionalFees = rawProfessionalFees.filter((item) => item.amount > 0 || item.note);
 
   const totalInvestment = constructionCost + architecturalFee + engineeringFee + interiorFee + additionalServicesCost;
 
@@ -163,6 +202,7 @@ export function calculateEstimate(s: WizardSelections, siteData: SiteDataRespons
     budgetCategory: budgetCategoryMap[s.quality],
     sustainabilityScore,
     carbonFootprintTons,
+    appliedRules: appliedRuleLabels,
     recommendations: [],
   };
 

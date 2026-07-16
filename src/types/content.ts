@@ -44,6 +44,22 @@ export interface FeeTier {
   rate: number;
 }
 
+export type PricingRuleConditionField = "projectType" | "category" | "quality" | "mepComplexity";
+export type PricingRuleActionTarget = "architecturalFee" | "engineeringFee" | "interiorFee" | "constructionCost";
+export type PricingRuleActionType = "waive" | "percentDiscount";
+
+export interface PricingRuleRow {
+  id: number;
+  label: string;
+  conditionField: PricingRuleConditionField;
+  conditionValue: string;
+  actionTarget: PricingRuleActionTarget;
+  actionType: PricingRuleActionType;
+  actionValue: number;
+  enabled: boolean;
+  sortOrder: number;
+}
+
 export interface PhaseItem {
   label: string;
   pct: number;
@@ -102,4 +118,5 @@ export interface SiteDataResponse {
   provinces: ProvinceRow[];
   services: ServiceRow[];
   portfolio: PortfolioItemRow[];
+  pricingRules: PricingRuleRow[];
 }

@@ -61,6 +61,24 @@ export const portfolioItems = pgTable("portfolio_items", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/**
+ * Admin-defined conditional pricing rules, e.g. "Design & Build projects get a
+ * free Architectural Design Fee" or "10% off Engineering Fee for Residential".
+ * conditionField/conditionValue is matched against the client's wizard selections;
+ * when it matches, actionType/actionValue is applied to actionTarget.
+ */
+export const pricingRules = pgTable("pricing_rules", {
+  id: serial().primaryKey(),
+  label: varchar("label", { length: 200 }).notNull(),
+  conditionField: varchar("condition_field", { length: 40 }).notNull(),
+  conditionValue: varchar("condition_value", { length: 120 }).notNull(),
+  actionTarget: varchar("action_target", { length: 40 }).notNull(),
+  actionType: varchar("action_type", { length: 20 }).notNull(),
+  actionValue: doublePrecision("action_value").notNull().default(0),
+  enabled: boolean("enabled").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
 /** Lead / CRM records submitted from the estimator's client info form. */
 export const leads = pgTable("leads", {
   id: serial().primaryKey(),
@@ -89,3 +107,5 @@ export type PortfolioItem = typeof portfolioItems.$inferSelect;
 export type NewPortfolioItem = typeof portfolioItems.$inferInsert;
 export type LeadRow = typeof leads.$inferSelect;
 export type NewLeadRow = typeof leads.$inferInsert;
+export type PricingRuleRow = typeof pricingRules.$inferSelect;
+export type NewPricingRuleRow = typeof pricingRules.$inferInsert;

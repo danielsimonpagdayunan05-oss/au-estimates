@@ -87,8 +87,13 @@ export function LiveCostPanel({ compact = false }: { compact?: boolean }) {
           <div className="space-y-1.5">
             {estimate.professionalFees.map((f) => (
               <div key={f.label} className="flex items-center justify-between text-[13px]">
-                <span className="text-ink-500 dark:text-ink-400">{f.label}</span>
-                <span className="font-medium text-ink-900 dark:text-white">{formatPHP(f.amount, { compact: true })}</span>
+                <span className="text-ink-500 dark:text-ink-400">
+                  {f.label}
+                  {f.note && <span className="ml-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">— {f.note}</span>}
+                </span>
+                <span className={f.amount === 0 && f.note ? "font-semibold text-emerald-600 dark:text-emerald-400" : "font-medium text-ink-900 dark:text-white"}>
+                  {f.amount === 0 && f.note ? "FREE" : formatPHP(f.amount, { compact: true })}
+                </span>
               </div>
             ))}
           </div>
