@@ -16,9 +16,13 @@ export default async () => {
   const settingsMap: Record<string, unknown> = {};
   for (const row of settingsRows) settingsMap[row.key] = row.value;
 
+  // No caching: the admin dashboard re-fetches this same endpoint immediately after every
+  // save to confirm it took. Any CDN/browser caching here (this used to be a 30s/300s SWR
+  // cache) means that immediate re-fetch can be served the pre-edit response, making a
+  // successful save look like it silently reverted.
   return json(
     { settings: settingsMap, stats, provinces: provinceRows, services: serviceRows, portfolio },
-    { headers: { "Cache-Control": "public, max-age=30, stale-while-revalidate=300" } },
+    { headers: { "Cache-Control": "no-store" } },
   );
 };
 
